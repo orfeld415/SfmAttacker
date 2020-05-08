@@ -34,7 +34,7 @@ def main():
     args = parser.parse_args()
     from kitti_eval.pose_evaluation_utils import test_framework_KITTI as test_framework
 
-    weights = torch.load(args.pretrained_posenet)
+    weights = torch.load(args.pretrained_posenet, map_location=device)
     seq_length = int(weights['state_dict']['conv1.0.weight'].size(1)/3)
     pose_net = PoseExpNet(nb_ref_imgs=seq_length - 1, output_exp=False).to(device)
     pose_net.load_state_dict(weights['state_dict'], strict=False)
@@ -48,6 +48,7 @@ def main():
         output_dir = Path(args.output_dir)
         output_dir.makedirs_p()
         predictions_array = np.zeros((len(framework), seq_length, 3, 4))
+        ground_truth_array = np.zeros((len(framework), seq_length, 3, 4))
 
     for j, sample in enumerate(tqdm(framework)):
         imgs = sample['imgs']
@@ -84,6 +85,7 @@ def main():
         final_poses[:,:,-1:] += first_inv_transform[:,-1:]
 
         if args.output_dir is not None:
+            ground_truth_array[j] = sample['poses']
             predictions_array[j] = final_poses
 
         ATE, RE = compute_pose_error(sample['poses'], final_poses)
@@ -100,6 +102,7 @@ def main():
 
     if args.output_dir is not None:
         np.save(output_dir/'predictions.npy', predictions_array)
+        np.save(output_dir/'ground_truth.npy', ground_truth_array)
 
 
 def compute_pose_error(gt, pred):
