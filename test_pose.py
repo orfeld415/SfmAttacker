@@ -49,6 +49,8 @@ def main():
         output_dir.makedirs_p()
         predictions_array = np.zeros((len(framework), seq_length, 3, 4))
         ground_truth_array = np.zeros((len(framework), seq_length, 3, 4))
+    
+    pertubations = np.load('/home/ziv/Desktop/sfm/SfmLearner-Pytorch/results/pertubations.npy')
 
     for j, sample in enumerate(tqdm(framework)):
         imgs = sample['imgs']
@@ -68,11 +70,17 @@ def main():
             else:
                 ref_imgs.append(img)
 
+        if j >= 691 and j<=726:
+            ref_imgs[0] += pertubations[j-691]
+            ref_imgs[1] += pertubations[j-691+1]
+            tgt_img += pertubations[j-691+2]
+            ref_imgs[2] += pertubations[j-691+3]
+            ref_imgs[3] += pertubations[j-691+4]
+        tgt_img = tgt_img.clamp_(-1,1)
+        ref_imgs = [ref_imgs[i].clamp_(-1,1) for i in range(4)]
         _, poses = pose_net(tgt_img, ref_imgs)
-
         poses = poses.cpu()[0]
         poses = torch.cat([poses[:len(imgs)//2], torch.zeros(1,6).float(), poses[len(imgs)//2:]])
-
         inv_transform_matrices = pose_vec2mat(poses, rotation_mode=args.rotation_mode).numpy().astype(np.float64)
 
         rot_matrices = np.linalg.inv(inv_transform_matrices[:,:,:3])
@@ -101,8 +109,9 @@ def main():
     print("std \t {:10.4f}, {:10.4f}".format(*std_errors))
 
     if args.output_dir is not None:
-        np.save(output_dir/'predictions.npy', predictions_array)
+        #np.save(output_dir/'predictions.npy', predictions_array)
         np.save(output_dir/'ground_truth.npy', ground_truth_array)
+        np.save(output_dir/'predictions_pertubated.npy', predictions_array)
 
 
 def compute_pose_error(gt, pred):

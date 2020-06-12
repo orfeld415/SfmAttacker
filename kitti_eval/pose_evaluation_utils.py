@@ -32,6 +32,22 @@ class test_framework_KITTI(object):
 
     def __len__(self):
         return sum(len(imgs) for imgs in self.img_files)
+    
+    def getByIndex(self, i):
+        img_list, pose_list, sample_list in zip(self.img_files[i], self.poses[i], self.sample_indices[i]):
+        for snippet_indices in sample_list:
+            imgs = [imread(img_list[j]).astype(np.float32) for j in snippet_indices]
+
+                poses = np.stack(pose_list[i] for i in snippet_indices)
+                first_pose = poses[0]
+                poses[:,:,-1] -= first_pose[:,-1]
+                compensated_poses = np.linalg.inv(first_pose[:,:3]) @ poses
+
+                return {'imgs': imgs,
+                       'path': img_list[0],
+                       'poses': compensated_poses
+                       }
+
 
 
 def read_scene_data(data_root, sequence_set, seq_length=3, step=1):
