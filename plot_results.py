@@ -35,8 +35,9 @@ def animate(i, traj_gt, traj_pred, traj_pertubated, im, xz_gt, xz_pred, xz_pertu
     image = imresize(image, (128, 416)).astype(np.float32)
     image = image/255
     if i>= 691 and i<= 730:
-        pert = pertubations[i-691][0]
+        pert = pertubations
         pert = np.transpose(pert, (1,2,0))
+        image[:,50:90,50:90] = 0
         image = image+(pert)/2
         image = np.clip(image,0,1)
 

@@ -56,86 +56,88 @@ class FGSM(Attacker):
         self.criterion = torch.nn.L1Loss()
 
     def generate(self, framework, pose_exp_net, mask):
-        perts = []
-        CP = CompensatedPoses()
-        for i in mask
-            if i not in mask or i%5 !=1:
-                continue
-            imgs = sample['imgs']
-            h,w,_ = imgs[0].shape
-            if (h != 128 or w != 416):
-                imgs = [imresize(img, (128, 416)).astype(np.float32) for img in imgs]
-            
-            imgs = [np.transpose(img, (2,0,1)) for img in imgs]
-            ref_imgs = []
-            for j, img in enumerate(imgs):
-                img = torch.from_numpy(img).unsqueeze(0)
-                img = ((img/255 - 0.5)/0.5).to(device)
-                if j == len(imgs)//2:
-                    tgt_img = img
-                else:
-                    ref_imgs.append(img)
-            
-            tgt_img = tgt_img.to(device)
-            ref_imgs = [img.to(device) for img in ref_imgs]
+        #curr_mask = [50,50,90,90]#noise_mask[0].astype(np.int)
+        noise = torch.randn(3,int(curr_mask[3]-curr_mask[1]),int(curr_mask[2]-curr_mask[0]))
+        noise.requires_grad_(True)
+        optimizer = torch.optim.Adam([noise], lr=1e-2)
+        for epoch in range(20):
+            CP = CompensatedPoses()
+            rand_log_i = np.random.randint(39)
+            for k in mask:
+                sample = framework.getByIndex(k)
+                i = k-mask[0]
+                imgs = sample['imgs']
+                h,w,_ = imgs[0].shape
+                if (h != 128 or w != 416):
+                    imgs = [imresize(img, (128, 416)).astype(np.float32) for img in imgs]
+                
+                imgs = [np.transpose(img, (2,0,1)) for img in imgs]
+                ref_imgs = []
+                for j, img in enumerate(imgs):
+                    img = torch.from_numpy(img).unsqueeze(0)
+                    img = ((img/255 - 0.5)/0.5).to(device)
+                    if j == len(imgs)//2:
+                        tgt_img = img
+                    else:
+                        ref_imgs.append(img)
+                
+                tgt_img = tgt_img.to(device)
+                ref_imgs = [img.to(device) for img in ref_imgs]
+                
+                zeros = torch.tensor(0)
+                m_ones = torch.tensor(-1)
+                ones = torch.tensor(1)
+                
+                
+                #curr_mask = noise_mask[i+2].astype(np.int)
+                #w = curr_mask[2]-curr_mask[0]
+                #h = curr_mask[3]-curr_mask[1]
+                #noise_box = imresize(noise, (w, h)).astype(np.float32)
+                # 1,3,128,416
+                z_clamped = noise.clamp(-1, 1)
+                #noise = noise.data.clamp_(-1,1)
+                tgt_img[0,:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] = z_clamped
+                for j, ref in enumerate(ref_imgs):
+                    pass
+                    #if j == 0:
+                    #    curr_mask = noise_mask[i+0].astype(np.int)
+                    #if j == 1:
+                    #    curr_mask = noise_mask[i+1].astype(np.int)
+                    #if j == 2:
+                    #    curr_mask = noise_mask[i+3].astype(np.int)
+                    #if j == 3:
+                    #    curr_mask = noise_mask[i+4].astype(np.int)
+                    #w = curr_mask[2]-curr_mask[0]
+                    #h = curr_mask[3]-curr_mask[1]
+                    #noise_box = imresize(noise, (w, h)).astype(np.float32)
+                    ref[0,:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] = z_clamped
 
-            tgt_img.requires_grad_()
-            for ref in ref_imgs:
-                ref.requires_grad_()
-            
-            zeros = torch.tensor(0)
-            m_ones = torch.tensor(-1)
-            ones = torch.tensor(1)
-            _, pose = pose_exp_net(tgt_img, ref_imgs)
-            pose_delta = CP.get(pose)
-            loss = self.criterion(pose_delta[1,0],ones) + self.criterion(pose_delta[1,2],m_ones)
-            pose_exp_net.zero_grad()
-            #print(loss)
-            pose1 = pose_delta
-            eta = torch.zeros((5,1,3,128,416))
-            for _ in range(50):
-                refs = [ref_imgs[j] + eta[j+1] for j in range(4)]
-                tgt_img0 = (tgt_img+eta[0]).clamp_(-1,1)
-                refs = [refs[j].clamp_(-1,1) for j in range(4)]
-                _, pose = pose_exp_net(tgt_img0, refs)
 
-                pose_delta = CP.get(pose)
+                _, pose = pose_exp_net(tgt_img, ref_imgs)
+                pose_delta = CP.get(pose,save=True)
+                optimizer.zero_grad()
+
                 loss1 = self.criterion(pose_delta[:,0],zeros)
                 loss2 = self.criterion(pose_delta[:,2],zeros)
-                loss = loss1 + loss2
+                loss = loss1 + loss1
+                if i == 0:
+                    print("epoch {} loss: {}".format(epoch,loss.item()))
+                    print("x: {}, z: {}".format(pose_delta[1,0],pose_delta[1,2]))
+
                 loss.backward()
-                curr_mask = noise_mask[i-691+2].astype(np.int)
-                eta[0,0,:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] -= 0.05 * torch.sign(tgt_img.grad.data)[0,:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]]
-                for j, ref in enumerate(ref_imgs):
-                    if j == 0:
-                        curr_mask = noise_mask[i-691+0].astype(np.int)
-                    if j == 1:
-                        curr_mask = noise_mask[i-691+1].astype(np.int)
-                    if j == 2:
-                        curr_mask = noise_mask[i-691+3].astype(np.int)
-                    if j == 3:
-                        curr_mask = noise_mask[i-691+4].astype(np.int)
-                    eta[j+1,0,:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] -= 0.05 * torch.sign(ref_imgs[j].grad.data)[0,:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]]
-                eta.clamp_(-1, 1)
-                pose_exp_net.zero_grad()
 
-            #plt.imshow(np.transpose(eta[0][0],(1,2,0)))
-            #plt.show()
-            bla1 = tgt_img + eta[0]
-            bla2 = [ref_imgs[j] + eta[j+1] for j in range(4)]
-            _, pose = pose_exp_net(bla1, bla2)
-
-            pose_delta = CP.get(pose,save=True)
-            loss = self.criterion(pose_delta[1,0],ones) + self.criterion(pose_delta[1,2],m_ones)
-            #print(loss)
-            print("before x: {}, z: {}".format(pose1[1,0],pose1[1,2]))
-            print("after x: {}, z: {}".format(pose_delta[1,0],pose_delta[1,2]))
-            perts.append(eta[1].detach().numpy())
-            perts.append(eta[2].detach().numpy())
-            perts.append(eta[0].detach().numpy())
-            perts.append(eta[3].detach().numpy())
-            perts.append(eta[4].detach().numpy())
-        return perts
+                optimizer.step()
+    
+                #plt.imshow(np.transpose(eta[0][0],(1,2,0)))
+                #plt.show()
+    
+                #print(loss)
+                #print("before x: {}, z: {}".format(pose1[1,0],pose1[1,2]))
+                #print("after x: {}, z: {}".format(pose_delta[1,0],pose_delta[1,2]))
+        noise.clamp(-1,1)
+        noise_full = np.zeros((3,128,416))
+        noise_full[:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] = noise.detach().numpy()
+        return noise_full
 
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -150,5 +152,5 @@ framework = test_framework('/home/ziv/Desktop/sfm/dataset', ['09'], 5)
 attacker = FGSM()
 mask = range(691,730)
 noise_mask = np.load('/home/ziv/Desktop/sfm/SfmLearner-Pytorch/results/tracker_out.npy')
-pertubations = np.array(attacker.generate(framework, pose_net, mask))
-np.save('/home/ziv/Desktop/sfm/SfmLearner-Pytorch/results/pertubations.npy', pertubations)
+pertubation = attacker.generate(framework, pose_net, mask)
+np.save('/home/ziv/Desktop/sfm/SfmLearner-Pytorch/results/pertubations.npy', pertubation)
