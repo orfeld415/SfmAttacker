@@ -77,11 +77,19 @@ if __name__ == '__main__' :
         # Draw bounding box
         if ok:
             # Tracking success
-            p1 = (int(bbox[0]), int(bbox[1]))
-            p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
-            cv2.rectangle(frame, p1, p2, (255,0,0), 2, 1)
+            p1 = [int(bbox[0]), int(bbox[1])]
+            p2 = [int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3])]
+            #cv2.rectangle(frame, p1, p2, (255,0,0), 2, 1)
             height = frame.shape[0]
             width = frame.shape[1]
+            if p1[0] < 0:
+                p1[0]=0
+            if p1[1] < 0:
+                p1[1]=0
+            if p2[0] < 0:
+                p2[0]=0
+            if p2[1] < 0:
+                p2[1]=0
             arr[index-692][0] = int(p1[0]/(width/416))
             arr[index-692][1] = int(p1[1]/(height/128))
             arr[index-692][2] = int(p2[0]/(width/416))
@@ -101,7 +109,7 @@ if __name__ == '__main__' :
         cv2.imshow("Tracking", frame)
 
         # Exit if ESC pressed
-        k = cv2.waitKey(300) & 0xff
+        k = cv2.waitKey(30) & 0xff
         if k == 27 : break
     print('finished')
     np.save('results/tracker_out.npy',arr)

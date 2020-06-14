@@ -9,6 +9,7 @@ from tqdm import tqdm
 
 from models import PoseExpNet
 from inverse_warp import pose_vec2mat
+import torch.nn.functional as F
 
 
 parser = argparse.ArgumentParser(description='Script for PoseNet testing with corresponding groundTruth from KITTI Odometry',
@@ -28,6 +29,9 @@ parser.add_argument("--rotation-mode", default='euler', choices=['euler', 'quat'
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
+def resize2d(img, size):
+    img = torch.tensor(img)
+    return F.adaptive_avg_pool2d(img, size)
 
 @torch.no_grad()
 def main():
@@ -38,6 +42,7 @@ def main():
     seq_length = int(weights['state_dict']['conv1.0.weight'].size(1)/3)
     pose_net = PoseExpNet(nb_ref_imgs=seq_length - 1, output_exp=False).to(device)
     pose_net.load_state_dict(weights['state_dict'], strict=False)
+    noise_mask = np.load('/home/ziv/Desktop/sfm/SfmLearner-Pytorch/results/tracker_out.npy')
 
     dataset_dir = Path(args.dataset_dir)
     framework = test_framework(dataset_dir, args.sequences, seq_length)
@@ -53,6 +58,7 @@ def main():
     pertubation = np.load('/home/ziv/Desktop/sfm/SfmLearner-Pytorch/results/pertubations.npy')
 
     for j, sample in enumerate(tqdm(framework)):
+        #j=j+690
         imgs = sample['imgs']
 
         h,w,_ = imgs[0].shape
@@ -70,17 +76,41 @@ def main():
             else:
                 ref_imgs.append(img)
         
-        if j >= 691 and j<=726:
-            ref_imgs[0][0,:,50:90,50:90] = 0
-            ref_imgs[1][0,:,50:90,50:90] = 0
-            ref_imgs[2][0,:,50:90,50:90] = 0
-            ref_imgs[3][0,:,50:90,50:90] = 0
-            tgt_img[0,:,50:90,50:90] = 0
-            ref_imgs[0][0] += pertubation
-            ref_imgs[1][0] += pertubation
-            tgt_img[0] += pertubation
-            ref_imgs[2][0] += pertubation
-            ref_imgs[3][0] += pertubation
+        if j >= 691 and j<=729:
+            curr_mask = noise_mask[j-691].astype(np.int)
+            w = curr_mask[2]-curr_mask[0]
+            h = curr_mask[3]-curr_mask[1]
+            noise_box = resize2d(pertubation, (h,w))
+            ref_imgs[0][0][:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] = noise_box
+
+            if j+1<=729:
+                curr_mask = noise_mask[j-691+1].astype(np.int)
+                w = curr_mask[2]-curr_mask[0]
+                h = curr_mask[3]-curr_mask[1]
+                noise_box = resize2d(pertubation, (h,w))
+                ref_imgs[1][0][:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] = noise_box
+
+            if j+2<=729:
+                curr_mask = noise_mask[j-691+2].astype(np.int)
+                w = curr_mask[2]-curr_mask[0]
+                h = curr_mask[3]-curr_mask[1]
+                noise_box = resize2d(pertubation, (h,w))
+                tgt_img[0][:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] = noise_box
+            
+            if j+3<=729:
+                curr_mask = noise_mask[j-691+3].astype(np.int)
+                w = curr_mask[2]-curr_mask[0]
+                h = curr_mask[3]-curr_mask[1]
+                noise_box = resize2d(pertubation, (h,w))
+                ref_imgs[2][0][:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] = noise_box
+
+            if j+4<=729:
+                curr_mask = noise_mask[j-691+4].astype(np.int)
+                w = curr_mask[2]-curr_mask[0]
+                h = curr_mask[3]-curr_mask[1]
+                noise_box = resize2d(pertubation, (h,w))
+                ref_imgs[3][0][:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] = noise_box
+
         tgt_img = tgt_img.clamp_(-1,1)
         ref_imgs = [ref_imgs[i].clamp_(-1,1) for i in range(4)]
         _, poses = pose_net(tgt_img, ref_imgs)

@@ -6,6 +6,8 @@ import os
 from scipy.misc import imresize
 import argparse
 from path import Path
+import torch.nn.functional as F
+import torch
 
 parser = argparse.ArgumentParser(description='',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -13,6 +15,10 @@ parser.add_argument("--img-height", default=128, type=int, help="Image height")
 parser.add_argument("--img-width", default=416, type=int, help="Image width")
 parser.add_argument("--dataset-dir", default='.', type=str, help="Dataset directory")
 parser.add_argument("--animate", action='store_true')
+
+def resize2d(img, size):
+    img = torch.tensor(img)
+    return F.adaptive_avg_pool2d(img, size)
 
 def getAbsolutePoses(poses):
     for i in range(1,len(poses)):
@@ -29,16 +35,18 @@ def getAbsoluteScale(poses, gt):
         poses[i][:,:,-1] = scale_factor * poses[i][:,:,-1]
     return poses
 
-def animate(i, traj_gt, traj_pred, traj_pertubated, im, xz_gt, xz_pred, xz_pertubated, dataset_dir, imgs):
-    i = i+600
+def animate(i, traj_gt, traj_pred, traj_pertubated, im, xz_gt, xz_pred, xz_pertubated, dataset_dir, imgs, noise_mask):
+    i = i+670
     image = mpimg.imread(dataset_dir/'{}'.format(imgs[i]))
     image = imresize(image, (128, 416)).astype(np.float32)
     image = image/255
     if i>= 691 and i<= 730:
-        pert = pertubations
-        pert = np.transpose(pert, (1,2,0))
-        image[:,50:90,50:90] = 0
-        image = image+(pert)/2
+        curr_mask = noise_mask[i-691].astype(np.int)
+        w = curr_mask[2]-curr_mask[0]
+        h = curr_mask[3]-curr_mask[1]
+        noise_box = resize2d(pertubations, (h,w))
+        pert = np.transpose(noise_box, (1,2,0))
+        image[curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] = pert/2+0.5
         image = np.clip(image,0,1)
 
         im.set_array(image)
@@ -59,6 +67,7 @@ def main():
     pertubated = np.load('results/predictions_pertubated.npy')
     pred = np.load('results/predictions.npy')
     gt = np.load('results/ground_truth.npy')
+    noise_mask = np.load('/home/ziv/Desktop/sfm/SfmLearner-Pytorch/results/tracker_out.npy')
 
     pertubated = getAbsoluteScale(pertubated, gt)
     pertubated = getAbsolutePoses(pertubated)
@@ -91,7 +100,7 @@ def main():
 
         animation.FuncAnimation(fig, animate, interval=100, blit=True,
                                     fargs=(traj_gt,traj_pred, traj_pertubated, im,
-                                    xz_gt, xz_pred, xz_pertubated, dataset_dir, imgs))
+                                    xz_gt, xz_pred, xz_pertubated, dataset_dir, imgs, noise_mask))
     else:
         ax1.plot(xz_gt[0], xz_gt[1], label='ground truth')
         ax1.plot(xz_pred[0], xz_pred[1], label='model prediction')

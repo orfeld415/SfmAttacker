@@ -43,6 +43,9 @@ class Attacker:
     def generate(self, model, x, y):
         pass
 
+def resize2d(img, size):
+    return (F.adaptive_avg_pool2d(img, size))
+
 class FGSM(Attacker):
     """
     Fast Gradient Sign Method
@@ -57,9 +60,9 @@ class FGSM(Attacker):
 
     def generate(self, framework, pose_exp_net, mask):
         #curr_mask = [50,50,90,90]#noise_mask[0].astype(np.int)
-        noise = torch.randn(3,int(curr_mask[3]-curr_mask[1]),int(curr_mask[2]-curr_mask[0]))
+        noise = torch.randn((3,128,416))
         noise.requires_grad_(True)
-        optimizer = torch.optim.Adam([noise], lr=1e-2)
+        optimizer = torch.optim.Adam([noise], lr=2e-1)
         for epoch in range(20):
             CP = CompensatedPoses()
             rand_log_i = np.random.randint(39)
@@ -88,28 +91,33 @@ class FGSM(Attacker):
                 m_ones = torch.tensor(-1)
                 ones = torch.tensor(1)
                 
-                
-                #curr_mask = noise_mask[i+2].astype(np.int)
-                #w = curr_mask[2]-curr_mask[0]
-                #h = curr_mask[3]-curr_mask[1]
-                #noise_box = imresize(noise, (w, h)).astype(np.float32)
-                # 1,3,128,416
-                z_clamped = noise.clamp(-1, 1)
-                #noise = noise.data.clamp_(-1,1)
-                tgt_img[0,:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] = z_clamped
+                if i+2 < len(mask):
+                    curr_mask = noise_mask[i+2].astype(np.int)
+                    w = curr_mask[2]-curr_mask[0]
+                    h = curr_mask[3]-curr_mask[1]
+                    noise_box = resize2d(noise, (h,w))
+                    z_clamped = noise_box.clamp(-1, 1)
+                    tgt_img[0,:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] = z_clamped
                 for j, ref in enumerate(ref_imgs):
-                    pass
-                    #if j == 0:
-                    #    curr_mask = noise_mask[i+0].astype(np.int)
-                    #if j == 1:
-                    #    curr_mask = noise_mask[i+1].astype(np.int)
-                    #if j == 2:
-                    #    curr_mask = noise_mask[i+3].astype(np.int)
-                    #if j == 3:
-                    #    curr_mask = noise_mask[i+4].astype(np.int)
-                    #w = curr_mask[2]-curr_mask[0]
-                    #h = curr_mask[3]-curr_mask[1]
-                    #noise_box = imresize(noise, (w, h)).astype(np.float32)
+                    if j == 1 and i+1 >= len(mask):
+                        continue
+                    if j == 2 and i+3 >= len(mask):
+                        continue
+                    if j == 3 and i+4 >= len(mask):
+                        continue
+                    if j == 0:
+                        curr_mask = noise_mask[i+0].astype(np.int)
+                    if j == 1:
+                        curr_mask = noise_mask[i+1].astype(np.int)
+                    if j == 2:
+                        curr_mask = noise_mask[i+3].astype(np.int)
+                    if j == 3:
+                        curr_mask = noise_mask[i+4].astype(np.int)
+                    w = curr_mask[2]-curr_mask[0]
+                    h = curr_mask[3]-curr_mask[1]
+                    #print('w: {}, h: {}'.format(w,h))
+                    noise_box = resize2d(noise, (h,w))
+                    z_clamped = noise_box.clamp(-1, 1)
                     ref[0,:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] = z_clamped
 
 
@@ -119,8 +127,8 @@ class FGSM(Attacker):
 
                 loss1 = self.criterion(pose_delta[:,0],zeros)
                 loss2 = self.criterion(pose_delta[:,2],zeros)
-                loss = loss1 + loss1
-                if i == 0:
+                loss = loss1 + loss2
+                if i == 33:
                     print("epoch {} loss: {}".format(epoch,loss.item()))
                     print("x: {}, z: {}".format(pose_delta[1,0],pose_delta[1,2]))
 
@@ -135,9 +143,7 @@ class FGSM(Attacker):
                 #print("before x: {}, z: {}".format(pose1[1,0],pose1[1,2]))
                 #print("after x: {}, z: {}".format(pose_delta[1,0],pose_delta[1,2]))
         noise.clamp(-1,1)
-        noise_full = np.zeros((3,128,416))
-        noise_full[:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] = noise.detach().numpy()
-        return noise_full
+        return noise.detach().numpy()
 
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
