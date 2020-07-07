@@ -60,18 +60,12 @@ if __name__ == '__main__' :
 
         # Read a new frame
         frame = cv2.imread(dataset_dir/'{:06}'.format(index)+'.png')
-        #frame = cv2.resize(frame,(416,128))
         index = index+1
-        # Start timer
-        timer = cv2.getTickCount()
 
         # Update tracker
         ok, bbox = tracker.update(frame)
 
-        # Calculate Frames per second (FPS)
-        fps = cv2.getTickFrequency() / (cv2.getTickCount() - timer);
-
-        # Draw bounding box
+        # Draw bounding box and save result
         if ok:
             # Tracking success
             p1 = (int(bbox[0]), int(bbox[1]))
@@ -79,18 +73,13 @@ if __name__ == '__main__' :
             cv2.rectangle(frame, p1, p2, (255,0,0), 2, 1)
             height = frame.shape[0]
             width = frame.shape[1]
-            if p1[0] < 0:
-                p1[0]=0
-            if p1[1] < 0:
-                p1[1]=0
-            if p2[0] < 0:
-                p2[0]=0
-            if p2[1] < 0:
-                p2[1]=0
             arr[index-first_index-1][0] = int(p1[0]/(width/416))
             arr[index-first_index-1][1] = int(p1[1]/(height/128))
             arr[index-first_index-1][2] = int(p2[0]/(width/416))
             arr[index-first_index-1][3] = int(p2[1]/(height/128))
+            for i,num in enumerate(arr[index-first_index-1]):
+                if num < 0:
+                    arr[index-first_index-1][i] = 0
         else :
             # Tracking failure
             cv2.putText(frame, "Tracking failure detected", (100,80), cv2.FONT_HERSHEY_SIMPLEX, 0.75,(0,0,255),2)

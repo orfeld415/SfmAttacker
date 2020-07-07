@@ -41,11 +41,11 @@ def getAbsoluteScale(poses, gt):
     return poses
 
 def animate(i):
-    i = i+600
     image = mpimg.imread(dataset_dir/'{}'.format(imgs[i]))
     image = imresize(image, (args.img_height, args.img_width)).astype(np.float32)
     image = image/255
     if i>= first_frame and i< last_frame:
+        # Add the adversarial noise to image
         curr_mask = noise_mask[i-first_frame].astype(np.int)
         w = curr_mask[2]-curr_mask[0]
         h = curr_mask[3]-curr_mask[1]
@@ -53,10 +53,11 @@ def animate(i):
         pert = np.transpose(noise_box, (1,2,0)).numpy()
         image[curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] += pert/2+0.5
         image = np.clip(image,0,1)
+    
+    # Update displayed image
+    im.set_array(image)
 
-        im.set_array(image)
-    else:
-        im.set_array(image)
+    # Update trajectories
     data = np.hstack((xz_gt[0][:i,np.newaxis], xz_gt[1][:i, np.newaxis]))
     traj_gt.set_offsets(data)
     data = np.hstack((xz_pred[0][:i,np.newaxis], xz_pred[1][:i, np.newaxis]))
@@ -82,6 +83,8 @@ if __name__ == '__main__':
     pred = getAbsoluteScale(pred, gt)
     pred = getAbsolutePoses(pred)
     gt = getAbsolutePoses(gt)
+
+    # Get xz space from poses matrices
     xz_gt = (gt[:,1][:,:,-1][:,0], gt[:,1][:,:,-1][:,2])
     xz_pred = (pred[:,1][:,:,-1][:,0], pred[:,1][:,:,-1][:,2])
     xz_perturbed = (perturbed[:,1][:,:,-1][:,0], perturbed[:,1][:,:,-1][:,2])
@@ -99,7 +102,7 @@ if __name__ == '__main__':
     if(args.animate):
         traj_gt = ax1.scatter(0,0,s=1, label='ground truth')
         traj_pred = ax1.scatter(0,0,s=1, label='model prediction')
-        traj_perturbed = ax1.scatter(0,0,s=1, label='perturbed')
+        traj_perturbed = ax1.scatter(0,0,s=1, label='adversarial results')
         ax1.legend(handles=[traj_gt,traj_pred,traj_perturbed])
     
         img = mpimg.imread(dataset_dir/'000000.png')

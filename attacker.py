@@ -168,9 +168,9 @@ def main():
     pose_net = PoseExpNet(nb_ref_imgs=seq_length - 1, output_exp=False).to(device)
     pose_net.load_state_dict(weights['state_dict'], strict=False)
 
-    # Set Kitti framework for sequence number 10 with 5-snippet.
+    # Set Kitti framework for sequence number 09 with 5-snippet samples.
     from kitti_eval.pose_evaluation_utils import test_framework_KITTI as test_framework
-    framework = test_framework(dataset_dir, ['10'], 5)
+    framework = test_framework(dataset_dir, ['09'], 5)
 
     attacker = Attacker(framework, pose_net)
     noise_mask = np.load(tracker_file)

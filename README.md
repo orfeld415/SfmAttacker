@@ -37,7 +37,7 @@ python obj_tracker.py --dataset-dir [PATH_TO_DATASET]/sequences/09/image_2/ -o t
 
 ### Attacker
 
-The attacker first initiallizes a random noise to add for each attacked frame. It needs a tracked object matrix with the same format given by the object tracker in order to apply the correct transformation on the noise. Then it tries to adjust the noise to maximize the distance between the model's original results and the attacked results.
+The attacker first initiallizes a random noise image to add for each attacked frame. It needs a tracked object matrix with the same format given by the object tracker in order to apply the correct transformation on the noise. Then it tries to adjust the noise to maximize the distance between the model's original results and the attacked results.
 
 An example use:
 
@@ -50,7 +50,7 @@ python attacker.py models/exp_pose_model_best.pth.tar --tracker-file tracked_obj
 After retrieving a noise image from attacker.py we can get the model's results on the adversarial video with the following command
 
 ```
-python test_pose.py models/exp_pose_model_best.pth.tar --dataset-dir [PATH_TO_DATASET] --sequences 09 --output-dir results/ --tracker-file tracker_out.npy --perturbation noise.npy
+python test_pose.py models/exp_pose_model_best.pth.tar --dataset-dir [PATH_TO_DATASET] --sequences 09 --output-dir results/ --tracker-file tracked_obj.npy --perturbation noise.npy
 ```
 
 You can also get the original results by removing the flags --tracker-file and --perturbation
@@ -61,11 +61,11 @@ To visualize the results we use plot_results.py, which can plot the trajectory a
 To plot:
 
 ```
-python plot_results.py --dataset-dir [PATH_TO_DATASET]/sequences/09/image_2/ --tracker-file tracker_out.npy --perturbation noise.npy --ground-truth-results results/ground_truth.npy --perturbed-results results/predictions_perturbed.npy --model-results results/predictions.npy
+python plot_results.py --dataset-dir [PATH_TO_DATASET]/sequences/09/image_2/ --tracker-file tracked_obj.npy --perturbation noise.npy --ground-truth-results results/ground_truth.npy --perturbed-results results/predictions_perturbed.npy --model-results results/predictions.npy
 ```
 
 To also show the adversarial video add an --animte flag:
 
 ```
-python plot_results.py --dataset-dir [PATH_TO_DATASET]/sequences/09/image_2/ --tracker-file tracker_out.npy --perturbation noise.npy --ground-truth-results results/ground_truth.npy --perturbed-results results/predictions_perturbed.npy --model-results results/predictions.npy --animate
+python plot_results.py --dataset-dir [PATH_TO_DATASET]/sequences/09/image_2/ --tracker-file tracked_obj.npy --perturbation noise.npy --ground-truth-results results/ground_truth.npy --perturbed-results results/predictions_perturbed.npy --model-results results/predictions.npy --animate
 ```
