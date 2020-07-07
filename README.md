@@ -35,6 +35,8 @@ An example use:
 python obj_tracker.py --dataset-dir [PATH_TO_DATASET]/sequences/09/image_2/ -o tracked_obj.npy
 ```
 
+Inside obj_tracker.py you can set first_frame and last_frame to select which part of the video should be attacked. this is relevant to all the following files.
+
 ### Attacker
 
 The attacker first initiallizes a random noise image to add for each attacked frame. It needs a tracked object matrix with the same format given by the object tracker in order to apply the correct transformation on the noise. Then it tries to adjust the noise to maximize the distance between the model's original results and the attacked results.
