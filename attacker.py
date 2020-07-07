@@ -2,108 +2,125 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.utils.data
-from models import PoseExpNet, DispNetS
-from loss_functions import photometric_reconstruction_loss, explainability_loss, smooth_loss, compute_errors
-from datasets.ziv_folders import SequenceFolder
-from logger import TermLogger, AverageMeter
+from path import Path
+from models import PoseExpNet
 from tqdm import tqdm
 from scipy.misc import imresize
 from inverse_warp import pose_vec2mat
-import matplotlib.pyplot as plt
+import argparse
 
-class CompensatedPoses:
-    def __init__(self):
-        self.last = None
+parser = argparse.ArgumentParser(description='Script for attacking sfm model',
+                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument("pretrained_weights", type=str, help="pretrained PoseNet weights path")
+parser.add_argument("--img-height", default=128, type=int, help="Image height")
+parser.add_argument("--img-width", default=416, type=int, help="Image width")
+parser.add_argument("--output-file", "-o", default=None, help="Output numpy file")
+parser.add_argument("--tracker-file", default=None, help="Object tracker numpy file")
+parser.add_argument("--dataset-dir", default='.', type=str, help="Dataset directory")
 
-    def get(self, pose, save=False):
-        poses = pose.cpu()[0]
-        poses = torch.cat([poses[:5//2], torch.zeros(1,6).float(), poses[5//2:]])
-        inv_transform_matrices = pose_vec2mat(poses, rotation_mode='euler').double()
+def getAbsolutePoses(poses):
+    """ Return absolute poses from poses snippets (relative poses) """
+    poses = np.array(poses)
+    
+    for i, pose in enumerate(poses):
+        pose = pose.cpu()[0]
+        pose = torch.cat([pose[:5//2], torch.zeros(1,6).float(), pose[5//2:]])
+        inv_transform_matrices = pose_vec2mat(pose, rotation_mode='euler').double()
         rot_matrices = torch.inverse(inv_transform_matrices[:,:,:3])
         tr_vectors = -rot_matrices @ inv_transform_matrices[:,:,-1:]
         transform_matrices = torch.cat([rot_matrices, tr_vectors], axis=-1)
         first_inv_transform = inv_transform_matrices[0]
         final_poses = first_inv_transform[:,:3] @ transform_matrices
         final_poses[:,:,-1:] += first_inv_transform[:,-1:]
+        poses[i] = final_poses
 
-        if self.last is None:
-            ret = final_poses
-        else:
-            r = self.last[1]
-            ret = r[:,:3] @ final_poses
-        if save:
-            self.last = final_poses.detach()
-        return ret[:,:,-1]
+    for i in range(1,len(poses)):
+        r = poses[i-1][1]
+        poses[i] = r[:,:3] @ poses[i]
+        poses[i][:,:,-1] = poses[i][:,:,-1] + r[:,-1]
 
-class Attacker:
-    def __init__(self, clip_max=0.5, clip_min=-0.5):
-        self.clip_max = clip_max
-        self.clip_min = clip_min
-
-    def generate(self, model, x, y):
-        pass
+    return poses[-1][:,:,-1]
 
 def resize2d(img, size):
     return (F.adaptive_avg_pool2d(img, size))
 
-class FGSM(Attacker):
-    """
-    Fast Gradient Sign Method
-    Ian J. Goodfellow, Jonathon Shlens, Christian Szegedy.
-    Explaining and Harnessing Adversarial Examples.
-    ICLR, 2015
-    """
-    def __init__(self, eps=0.15, clip_max=0.5, clip_min=-0.5):
-        super(FGSM, self).__init__(clip_max, clip_min)
-        self.eps = eps
-        self.criterion = torch.nn.L1Loss()
+def getNetInput(sample):
+    """ Returns model input given a sample of images snippet """
+    imgs = sample['imgs']
+    h,w,_ = imgs[0].shape
+    if (h != args.img_height or w != args.img_width):
+        imgs = [imresize(img, (args.img_height, args.img_width)).astype(np.float32) for img in imgs]
+    
+    imgs = [np.transpose(img, (2,0,1)) for img in imgs]
+    ref_imgs = []
+    for j, img in enumerate(imgs):
+        img = torch.from_numpy(img).unsqueeze(0)
+        img = ((img/255 - 0.5)/0.5).to(device)
+        if j == len(imgs)//2:
+            tgt_img = img
+        else:
+            ref_imgs.append(img)
+    
+    tgt_img = tgt_img.to(device)
+    ref_imgs = [img.to(device) for img in ref_imgs]
 
-    def generate(self, framework, pose_exp_net, mask):
-        #curr_mask = [50,50,90,90]#noise_mask[0].astype(np.int)
-        noise = torch.randn((3,128,416))
+    return tgt_img, ref_imgs
+
+class Attacker():
+    def __init__(self, framework, pose_net, look_ahead=30):
+        self.look_ahead = 30 # Number of frames to look ahead when calculating loss
+        self.pose_net = pose_net
+        self.framework = framework
+        self.criterion = torch.nn.MSELoss()
+
+    def generate(self, noise_mask, first_frame, last_frame):
+        """ Generates an adversarial example """
+        num_frames = last_frame-first_frame+1
+
+        # Initialize random noise from uniform distribution between (-1, 1)
+        noise = (torch.rand((3,args.img_height,args.img_width))*2-1)*1
         noise.requires_grad_(True)
-        optimizer = torch.optim.Adam([noise], lr=2e-1)
-        for epoch in range(20):
-            CP = CompensatedPoses()
-            rand_log_i = np.random.randint(39)
-            for k in mask:
-                sample = framework.getByIndex(k)
-                i = k-mask[0]
-                imgs = sample['imgs']
-                h,w,_ = imgs[0].shape
-                if (h != 128 or w != 416):
-                    imgs = [imresize(img, (128, 416)).astype(np.float32) for img in imgs]
-                
-                imgs = [np.transpose(img, (2,0,1)) for img in imgs]
-                ref_imgs = []
-                for j, img in enumerate(imgs):
-                    img = torch.from_numpy(img).unsqueeze(0)
-                    img = ((img/255 - 0.5)/0.5).to(device)
-                    if j == len(imgs)//2:
-                        tgt_img = img
-                    else:
-                        ref_imgs.append(img)
-                
-                tgt_img = tgt_img.to(device)
-                ref_imgs = [img.to(device) for img in ref_imgs]
-                
-                zeros = torch.tensor(0)
-                m_ones = torch.tensor(-1)
-                ones = torch.tensor(1)
-                
-                if i+2 < len(mask):
+
+        # Initialize optimizer
+        optimizer = torch.optim.Adam([noise], lr=1e-1)
+
+        # Get model original results (without attack)
+        poses = []
+        for i in tqdm(range(first_frame,last_frame+self.look_ahead)):
+            sample = self.framework.getByIndex(i)
+            tgt_img, ref_imgs = getNetInput(sample)
+            _, pose = self.pose_net(tgt_img, ref_imgs)
+            poses.append(pose)
+        orig_results = getAbsolutePoses(poses).detach().numpy()
+        orig_results = torch.from_numpy(orig_results).double()
+
+        # Train adversarial example
+        for epoch in range(30):
+            poses = []
+            for k in tqdm(range(first_frame,last_frame+self.look_ahead)):
+                sample = self.framework.getByIndex(k)
+                i = k-first_frame
+                tgt_img, ref_imgs = getNetInput(sample)
+
+                # Add noise to target frame
+                if k+2 < last_frame:
                     curr_mask = noise_mask[i+2].astype(np.int)
                     w = curr_mask[2]-curr_mask[0]
                     h = curr_mask[3]-curr_mask[1]
                     noise_box = resize2d(noise, (h,w))
                     z_clamped = noise_box.clamp(-1, 1)
-                    tgt_img[0,:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] = z_clamped
+                    tgt_img[0,:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] += z_clamped
+                    tgt_img = tgt_img.clamp(-1,1)
+
+                # Add noises to reference frames
                 for j, ref in enumerate(ref_imgs):
-                    if j == 1 and i+1 >= len(mask):
+                    if j == 0 and k >= last_frame:
                         continue
-                    if j == 2 and i+3 >= len(mask):
+                    if j == 1 and k+1 >= last_frame:
                         continue
-                    if j == 3 and i+4 >= len(mask):
+                    if j == 2 and k+3 >= last_frame:
+                        continue
+                    if j == 3 and k+4 >= last_frame:
                         continue
                     if j == 0:
                         curr_mask = noise_mask[i+0].astype(np.int)
@@ -115,48 +132,54 @@ class FGSM(Attacker):
                         curr_mask = noise_mask[i+4].astype(np.int)
                     w = curr_mask[2]-curr_mask[0]
                     h = curr_mask[3]-curr_mask[1]
-                    #print('w: {}, h: {}'.format(w,h))
                     noise_box = resize2d(noise, (h,w))
-                    z_clamped = noise_box.clamp(-1, 1)
-                    ref[0,:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] = z_clamped
+                    z_clamped = noise_box.clamp(-0.7, 0.7)
+                    ref[0,:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] += z_clamped
+                    ref = ref.clamp(-1,1)
 
+                _, pose = self.pose_net(tgt_img, ref_imgs)
+                poses.append(pose)
 
-                _, pose = pose_exp_net(tgt_img, ref_imgs)
-                pose_delta = CP.get(pose,save=True)
-                optimizer.zero_grad()
+            # Get attacked absoulte poses
+            res = getAbsolutePoses(poses)
 
-                loss1 = self.criterion(pose_delta[:,0],zeros)
-                loss2 = self.criterion(pose_delta[:,2],zeros)
-                loss = loss1 + loss2
-                if i == 33:
-                    print("epoch {} loss: {}".format(epoch,loss.item()))
-                    print("x: {}, z: {}".format(pose_delta[1,0],pose_delta[1,2]))
+            # Minimize the negative loss <-> maximize the loss
+            loss = -1*self.criterion(res, orig_results)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-                loss.backward()
+            print("epoch {} loss: {}".format(epoch,loss.item()))
+            print("\u0394x: {}, \u0394z: {}".format(res[1,0]-orig_results[1,0],res[1,2]-orig_results[1,2]))
 
-                optimizer.step()
-    
-                #plt.imshow(np.transpose(eta[0][0],(1,2,0)))
-                #plt.show()
-    
-                #print(loss)
-                #print("before x: {}, z: {}".format(pose1[1,0],pose1[1,2]))
-                #print("after x: {}, z: {}".format(pose_delta[1,0],pose_delta[1,2]))
-        noise.clamp(-1,1)
+        # Clamp final noise to the range (-1,1) same as the net recieves
+        noise = noise.clamp(-1,1)
         return noise.detach().numpy()
 
+def main():
+    output_file = Path(args.output_file)
+    tracker_file = Path(args.tracker_file)
+    pretrained_weights = Path(args.pretrained_weights)
+    dataset_dir = Path(args.dataset_dir)
 
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-weights = torch.load('/home/ziv/Desktop/sfm/SfmLearner-Pytorch/models/exp_pose_model_best.pth.tar', map_location=device)
-seq_length = int(weights['state_dict']['conv1.0.weight'].size(1)/3)
-pose_net = PoseExpNet(nb_ref_imgs=seq_length - 1, output_exp=False).to(device)
-pose_net.load_state_dict(weights['state_dict'], strict=False)
+    # Load pretrained model 
+    weights = torch.load(pretrained_weights, map_location=device)
+    seq_length = int(weights['state_dict']['conv1.0.weight'].size(1)/3)
+    pose_net = PoseExpNet(nb_ref_imgs=seq_length - 1, output_exp=False).to(device)
+    pose_net.load_state_dict(weights['state_dict'], strict=False)
 
-from kitti_eval.pose_evaluation_utils import test_framework_KITTI as test_framework
-framework = test_framework('/home/ziv/Desktop/sfm/dataset', ['09'], 5)
+    # Set Kitti framework for sequence number 10 with 5-snippet.
+    from kitti_eval.pose_evaluation_utils import test_framework_KITTI as test_framework
+    framework = test_framework(dataset_dir, ['10'], 5)
 
-attacker = FGSM()
-mask = range(691,730)
-noise_mask = np.load('/home/ziv/Desktop/sfm/SfmLearner-Pytorch/results/tracker_out.npy')
-pertubation = attacker.generate(framework, pose_net, mask)
-np.save('/home/ziv/Desktop/sfm/SfmLearner-Pytorch/results/pertubations.npy', pertubation)
+    attacker = Attacker(framework, pose_net)
+    noise_mask = np.load(tracker_file)
+    pertubation = attacker.generate(noise_mask, 691, 731)
+    np.save(output_file, pertubation)
+
+    print('Attacked!')
+
+if __name__ == '__main__':
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    args = parser.parse_args()
+    main()

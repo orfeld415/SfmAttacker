@@ -1,12 +1,10 @@
 import torch
 from torch.autograd import Variable
-
 from scipy.misc import imresize
 import numpy as np
 from path import Path
 import argparse
 from tqdm import tqdm
-
 from models import PoseExpNet
 from inverse_warp import pose_vec2mat
 import torch.nn.functional as F
@@ -26,6 +24,8 @@ parser.add_argument("--sequences", default=['09'], type=str, nargs='*', help="se
 parser.add_argument("--output-dir", default=None, type=str, help="Output directory for saving predictions in a big 3D numpy file")
 parser.add_argument("--img-exts", default=['png', 'jpg', 'bmp'], nargs='*', type=str, help="images extensions to glob")
 parser.add_argument("--rotation-mode", default='euler', choices=['euler', 'quat'], type=str)
+parser.add_argument("--tracker-file", default=None, help="Object tracker numpy file")
+parser.add_argument("--perturbation", default=None, help="perturbations numpy file")
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -36,13 +36,19 @@ def resize2d(img, size):
 @torch.no_grad()
 def main():
     args = parser.parse_args()
+    attack = False
+    if args.perturbation and args.tracker_file:
+        attack = True
+        perturbation = np.load(Path(args.perturbation))
+        noise_mask = np.load(Path(args.tracker_file))
+
+
     from kitti_eval.pose_evaluation_utils import test_framework_KITTI as test_framework
 
     weights = torch.load(args.pretrained_posenet, map_location=device)
     seq_length = int(weights['state_dict']['conv1.0.weight'].size(1)/3)
     pose_net = PoseExpNet(nb_ref_imgs=seq_length - 1, output_exp=False).to(device)
     pose_net.load_state_dict(weights['state_dict'], strict=False)
-    noise_mask = np.load('/home/ziv/Desktop/sfm/SfmLearner-Pytorch/results/tracker_out.npy')
 
     dataset_dir = Path(args.dataset_dir)
     framework = test_framework(dataset_dir, args.sequences, seq_length)
@@ -54,11 +60,8 @@ def main():
         output_dir.makedirs_p()
         predictions_array = np.zeros((len(framework), seq_length, 3, 4))
         ground_truth_array = np.zeros((len(framework), seq_length, 3, 4))
-    
-    pertubation = np.load('/home/ziv/Desktop/sfm/SfmLearner-Pytorch/results/pertubations.npy')
 
     for j, sample in enumerate(tqdm(framework)):
-        #j=j+690
         imgs = sample['imgs']
 
         h,w,_ = imgs[0].shape
@@ -76,43 +79,35 @@ def main():
             else:
                 ref_imgs.append(img)
         
-        if j >= 691 and j<=729:
-            curr_mask = noise_mask[j-691].astype(np.int)
-            w = curr_mask[2]-curr_mask[0]
-            h = curr_mask[3]-curr_mask[1]
-            noise_box = resize2d(pertubation, (h,w))
-            ref_imgs[0][0][:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] = noise_box
-
-            if j+1<=729:
-                curr_mask = noise_mask[j-691+1].astype(np.int)
+        if attack:
+            # Add noise to target image
+            if j+2 >= first_frame and j+2 < last_frame:
+                curr_mask = noise_mask[j-first_frame+2].astype(np.int)
                 w = curr_mask[2]-curr_mask[0]
                 h = curr_mask[3]-curr_mask[1]
-                noise_box = resize2d(pertubation, (h,w))
-                ref_imgs[1][0][:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] = noise_box
+                noise_box = resize2d(perturbation, (h,w))
+                tgt_img[0][:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] += noise_box
+                tgt_img[0] = tgt_img[0].clamp(-1,1)
 
-            if j+2<=729:
-                curr_mask = noise_mask[j-691+2].astype(np.int)
-                w = curr_mask[2]-curr_mask[0]
-                h = curr_mask[3]-curr_mask[1]
-                noise_box = resize2d(pertubation, (h,w))
-                tgt_img[0][:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] = noise_box
-            
-            if j+3<=729:
-                curr_mask = noise_mask[j-691+3].astype(np.int)
-                w = curr_mask[2]-curr_mask[0]
-                h = curr_mask[3]-curr_mask[1]
-                noise_box = resize2d(pertubation, (h,w))
-                ref_imgs[2][0][:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] = noise_box
+            # Add noise to reference images
+            for k in range(5):
+                ref_idx = k
+                if k == 2:
+                    # Skip target image
+                    continue
+                if k > 2:
+                    # Since it is numbered: ref1, ref2, tgt, ref3, ref4
+                    ref_idx = k-1
+                if j+k >= first_frame and j+k<last_frame:
+                    curr_mask = noise_mask[j-first_frame+k].astype(np.int)
+                    w = curr_mask[2]-curr_mask[0]
+                    h = curr_mask[3]-curr_mask[1]
+                    noise_box = resize2d(perturbation, (h,w))
+                    ref_imgs[ref_idx][0][:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] += noise_box
+                    ref_imgs[ref_idx] = ref_imgs[1].clamp(-1,1)
 
-            if j+4<=729:
-                curr_mask = noise_mask[j-691+4].astype(np.int)
-                w = curr_mask[2]-curr_mask[0]
-                h = curr_mask[3]-curr_mask[1]
-                noise_box = resize2d(pertubation, (h,w))
-                ref_imgs[3][0][:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] = noise_box
-
-        tgt_img = tgt_img.clamp_(-1,1)
-        ref_imgs = [ref_imgs[i].clamp_(-1,1) for i in range(4)]
+        #tgt_img = tgt_img.clamp_(-1,1)
+        #ref_imgs = [ref_imgs[i].clamp_(-1,1) for i in range(4)]
         _, poses = pose_net(tgt_img, ref_imgs)
         poses = poses.cpu()[0]
         poses = torch.cat([poses[:len(imgs)//2], torch.zeros(1,6).float(), poses[len(imgs)//2:]])
@@ -144,9 +139,8 @@ def main():
     print("std \t {:10.4f}, {:10.4f}".format(*std_errors))
 
     if args.output_dir is not None:
-        #np.save(output_dir/'predictions.npy', predictions_array)
         np.save(output_dir/'ground_truth.npy', ground_truth_array)
-        np.save(output_dir/'predictions_pertubated.npy', predictions_array)
+        np.save(output_dir/'predictions_perturbed.npy', predictions_array)
 
 
 def compute_pose_error(gt, pred):
@@ -166,6 +160,7 @@ def compute_pose_error(gt, pred):
 
     return ATE/snippet_length, RE/snippet_length
 
-
 if __name__ == '__main__':
+    first_frame = 691
+    last_frame = 731
     main()
