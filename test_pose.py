@@ -104,10 +104,8 @@ def main():
                     h = curr_mask[3]-curr_mask[1]
                     noise_box = resize2d(perturbation, (h,w))
                     ref_imgs[ref_idx][0][:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] += noise_box
-                    ref_imgs[ref_idx] = ref_imgs[1].clamp(-1,1)
+                    ref_imgs[ref_idx] = ref_imgs[ref_idx].clamp(-1,1)
 
-        #tgt_img = tgt_img.clamp_(-1,1)
-        #ref_imgs = [ref_imgs[i].clamp_(-1,1) for i in range(4)]
         _, poses = pose_net(tgt_img, ref_imgs)
         poses = poses.cpu()[0]
         poses = torch.cat([poses[:len(imgs)//2], torch.zeros(1,6).float(), poses[len(imgs)//2:]])

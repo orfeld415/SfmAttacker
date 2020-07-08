@@ -133,7 +133,7 @@ class Attacker():
                     w = curr_mask[2]-curr_mask[0]
                     h = curr_mask[3]-curr_mask[1]
                     noise_box = resize2d(noise, (h,w))
-                    z_clamped = noise_box.clamp(-0.7, 0.7)
+                    z_clamped = noise_box.clamp(-1, 1)
                     ref[0,:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] += z_clamped
                     ref = ref.clamp(-1,1)
 
