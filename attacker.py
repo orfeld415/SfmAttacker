@@ -67,8 +67,8 @@ def getNetInput(sample):
     return tgt_img, ref_imgs
 
 class Attacker():
-    def __init__(self, framework, pose_net, look_ahead=30):
-        self.look_ahead = 30 # Number of frames to look ahead when calculating loss
+    def __init__(self, framework, pose_net, look_ahead=60):
+        self.look_ahead = look_ahead # Number of frames to look ahead when calculating loss
         self.pose_net = pose_net
         self.framework = framework
         self.criterion = torch.nn.MSELoss()
@@ -95,7 +95,7 @@ class Attacker():
         orig_results = torch.from_numpy(orig_results).double()
 
         # Train adversarial example
-        for epoch in range(30):
+        for epoch in range(50):
             poses = []
             for k in tqdm(range(first_frame,last_frame+self.look_ahead)):
                 sample = self.framework.getByIndex(k)
@@ -108,7 +108,7 @@ class Attacker():
                     w = curr_mask[2]-curr_mask[0]
                     h = curr_mask[3]-curr_mask[1]
                     noise_box = resize2d(noise, (h,w))
-                    z_clamped = noise_box.clamp(-1, 1)
+                    z_clamped = noise_box.clamp(-2, 2)
                     tgt_img[0,:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] += z_clamped
                     tgt_img = tgt_img.clamp(-1,1)
 
@@ -133,7 +133,7 @@ class Attacker():
                     w = curr_mask[2]-curr_mask[0]
                     h = curr_mask[3]-curr_mask[1]
                     noise_box = resize2d(noise, (h,w))
-                    z_clamped = noise_box.clamp(-1, 1)
+                    z_clamped = noise_box.clamp(-2, 2)
                     ref[0,:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] += z_clamped
                     ref = ref.clamp(-1,1)
 

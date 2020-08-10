@@ -51,7 +51,7 @@ def animate(i):
         h = curr_mask[3]-curr_mask[1]
         noise_box = resize2d(perturbations, (h,w))
         pert = np.transpose(noise_box, (1,2,0)).numpy()
-        image[curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] += pert/2+0.5
+        image[curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] += pert/2+1
         image = np.clip(image,0,1)
     
     # Update displayed image
