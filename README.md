@@ -71,3 +71,10 @@ To also show the adversarial video add an --animte flag:
 ```
 python plot_results.py --dataset-dir [PATH_TO_DATASET]/sequences/09/image_2/ --tracker-file tracked_obj.npy --perturbation noise.npy --ground-truth-results results/ground_truth.npy --perturbed-results results/predictions_perturbed.npy --model-results results/predictions.npy --animate
 ```
+
+### Reproduce our results
+
+All hyperparameters are already set within the files.
+Our results were produced on KITTI's visual odometry sequence 09.
+
+To reproduce the results attack the model (see Attacker) with the tracked object file in results/tracked_obj.npy
