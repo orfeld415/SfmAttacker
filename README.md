@@ -18,7 +18,7 @@ pip3 install -r requirements.txt
 
 This attacker currently aims KITTI visual odometry dataset. Some adjustments need to be made before applying this framework on different datasets.
 
-To use KITTI dataset, download the colored dataset from [here](http://www.cvlibs.net/datasets/kitti/eval_odometry.php).
+To use KITTI dataset, download the "colored dataset" and the "odometry ground truth" from [here](http://www.cvlibs.net/datasets/kitti/eval_odometry.php).
 
 ### Object tracker
 

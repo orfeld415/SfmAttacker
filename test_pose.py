@@ -86,6 +86,7 @@ def main():
                 w = curr_mask[2]-curr_mask[0]
                 h = curr_mask[3]-curr_mask[1]
                 noise_box = resize2d(perturbation, (h,w))
+                noise_box = noise_box.to(device)
                 tgt_img[0][:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] += noise_box
                 tgt_img[0] = tgt_img[0].clamp(-1,1)
 
@@ -103,6 +104,7 @@ def main():
                     w = curr_mask[2]-curr_mask[0]
                     h = curr_mask[3]-curr_mask[1]
                     noise_box = resize2d(perturbation, (h,w))
+                    noise_box = noise_box.to(device)
                     ref_imgs[ref_idx][0][:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] += noise_box
                     ref_imgs[ref_idx] = ref_imgs[ref_idx].clamp(-1,1)
 

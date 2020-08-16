@@ -109,6 +109,7 @@ class Attacker():
                     h = curr_mask[3]-curr_mask[1]
                     noise_box = resize2d(noise, (h,w))
                     z_clamped = noise_box.clamp(-2, 2)
+                    z_clamped = z_clamped.to(device)
                     tgt_img[0,:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] += z_clamped
                     tgt_img = tgt_img.clamp(-1,1)
 
@@ -134,6 +135,7 @@ class Attacker():
                     h = curr_mask[3]-curr_mask[1]
                     noise_box = resize2d(noise, (h,w))
                     z_clamped = noise_box.clamp(-2, 2)
+                    z_clamped = z_clamped.to(device)
                     ref[0,:,curr_mask[1]:curr_mask[3],curr_mask[0]:curr_mask[2]] += z_clamped
                     ref = ref.clamp(-1,1)
 
