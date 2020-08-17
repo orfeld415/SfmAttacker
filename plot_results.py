@@ -109,7 +109,8 @@ if __name__ == '__main__':
         img = imresize(img, (args.img_height, args.img_width))
         im = ax2.imshow(img, animated = True)
 
-        animation.FuncAnimation(fig, animate, interval=100, blit=True)
+        anim=animation.FuncAnimation(fig, animate, interval=100, blit=True)
+        anim.save('animation.gif', writer='imagemagick')
     else:
         ax1.plot(xz_gt[0], xz_gt[1], label='ground truth')
         ax1.plot(xz_pred[0], xz_pred[1], label='model prediction')
