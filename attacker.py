@@ -33,6 +33,7 @@ def getAbsolutePoses(poses):
         final_poses = first_inv_transform[:,:3] @ transform_matrices
         final_poses[:,:,-1:] += first_inv_transform[:,-1:]
         poses[i] = final_poses
+        #print(final_poses)
 
     for i in range(1,len(poses)):
         r = poses[i-1][1]
@@ -90,9 +91,12 @@ class Attacker():
             sample = self.framework.getByIndex(i)
             tgt_img, ref_imgs = getNetInput(sample)
             _, pose = self.pose_net(tgt_img, ref_imgs)
+            #print(i,pose)
+            #print(i,mycheck)
             poses.append(pose)
         orig_results = getAbsolutePoses(poses).detach().numpy()
         orig_results = torch.from_numpy(orig_results).double()
+        #print(orig_results,"orig_results")
 
         # Train adversarial example
         for epoch in range(50):

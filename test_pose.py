@@ -40,6 +40,7 @@ def main():
     if args.perturbation and args.tracker_file:
         attack = True
         perturbation = np.load(Path(args.perturbation))
+        print(perturbation.shape)
         noise_mask = np.load(Path(args.tracker_file))
 
 
@@ -83,6 +84,8 @@ def main():
             # Add noise to target image
             if j+2 >= first_frame and j+2 < last_frame:
                 curr_mask = noise_mask[j-first_frame+2].astype(np.int)
+                print(curr_mask)
+
                 w = curr_mask[2]-curr_mask[0]
                 h = curr_mask[3]-curr_mask[1]
                 noise_box = resize2d(perturbation, (h,w))
