@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser(description='Script for attacking sfm model',
 parser.add_argument("pretrained_weights", type=str, help="pretrained PoseNet weights path")
 parser.add_argument("--img-height", default=128, type=int, help="Image height")
 parser.add_argument("--img-width", default=416, type=int, help="Image width")
-parser.add_argument("--output-file", "-o", default=None, help="Output numpy file")
+#parser.add_argument("--output-file", "-o", default=None, help="Output numpy file")
 parser.add_argument("--tracker-file", default=None, help="Object tracker numpy file")
 parser.add_argument("--dataset-dir", default='.', type=str, help="Dataset directory")
 
@@ -72,13 +72,14 @@ def getNetInput(sample):
 
 
 class Attacker():
-    def __init__(self, framework, pose_net, look_ahead=60):
+    def __init__(self, framework, pose_net, adv_framework, look_ahead=60):
         self.look_ahead = look_ahead  # Number of frames to look ahead when calculating loss
         self.pose_net = pose_net
         self.framework = framework
         self.criterion = torch.nn.MSELoss()
+        self.adv_framework = adv_framework
 
-    def generate(self, noise_mask, first_frame, last_frame):  # ,attack_first_frame):
+    def generate(self, noise_mask, first_frame, last_frame, first_adv_frame):
         """ Generates an adversarial example """
         num_frames = last_frame - first_frame + 1
 
@@ -96,8 +97,9 @@ class Attacker():
 
         # Get model adverserial "class" results (without attack)
         poses = []
-        for i in tqdm(range(70, 110 + self.look_ahead)):
-            sample = self.framework.getByIndex(i)
+
+        for i in tqdm(range(first_adv_frame, first_adv_frame + (last_frame - first_frame))):
+            sample = self.adv_framework.getByIndex(i)
             tgt_img, ref_imgs = getNetInput(sample)
             _, pose = self.pose_net(tgt_img, ref_imgs)
             poses.append(pose)
@@ -117,7 +119,7 @@ class Attacker():
 
         # Train adversarial example
         criterions = [torch.nn.MSELoss() for _ in range(first_frame, last_frame)]
-        for epoch in range(50):
+        for epoch in range(250):
             poses = []
             for k in tqdm(range(first_frame, last_frame + self.look_ahead)):
                 sample = self.framework.getByIndex(k)
@@ -187,7 +189,7 @@ class Attacker():
 
 
 def main():
-    output_file = Path(args.output_file)
+    #output_file = Path(args.output_file)
     tracker_file = Path(args.tracker_file)
     pretrained_weights = Path(args.pretrained_weights)
     dataset_dir = Path(args.dataset_dir)
@@ -201,12 +203,14 @@ def main():
     # Set Kitti framework for sequence number 09 with 5-snippet samples.
     from kitti_eval.pose_evaluation_utils import test_framework_KITTI as test_framework
     framework = test_framework(dataset_dir, ['09'], 5)
+    adv_framework = test_framework(dataset_dir, ['00'], 5)
 
-    attacker = Attacker(framework, pose_net)
+    attacker = Attacker(framework, pose_net, adv_framework)
     noise_mask = np.load(tracker_file)
-    pertubation = attacker.generate(noise_mask, 691, 731)
-    # pertubation = attacker.generate(noise_mask, 70, 110)
-    np.save(output_file, pertubation)
+    pertubationLeft = attacker.generate(noise_mask, 691, 731, 187)
+    pertubationRight = attacker.generate(noise_mask, 691, 731, 90)
+    np.save("noiseLeft.npy", pertubationLeft)
+    np.save("noiseRight.npy", pertubationRight)
 
     print('Attacked!')
 

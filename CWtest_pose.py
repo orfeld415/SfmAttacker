@@ -26,7 +26,7 @@ parser.add_argument("--output-dir", default=None, type=str,
 parser.add_argument("--img-exts", default=['png', 'jpg', 'bmp'], nargs='*', type=str, help="images extensions to glob")
 parser.add_argument("--rotation-mode", default='euler', choices=['euler', 'quat'], type=str)
 parser.add_argument("--tracker-file", default=None, help="Object tracker numpy file")
-parser.add_argument("--perturbation", default=None, help="perturbations numpy file")
+# parser.add_argument("--perturbation", default=None, help="perturbations numpy file")
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -37,12 +37,12 @@ def resize2d(img, size):
 
 
 @torch.no_grad()
-def main():
+def main(perturbation, result_name):
     args = parser.parse_args()
     attack = False
-    if args.perturbation and args.tracker_file:
+    if args.tracker_file:
         attack = True
-        loaded_perturbations = np.load(Path(args.perturbation))
+        loaded_perturbations = np.load(Path(perturbation))
         perturbations = [loaded_perturbations[i] for i in range(0, loaded_perturbations.shape[0])]
         print(loaded_perturbations.shape)
         noise_mask = np.load(Path(args.tracker_file))
@@ -90,7 +90,7 @@ def main():
                 w = curr_mask[2] - curr_mask[0]
                 h = curr_mask[3] - curr_mask[1]
                 noise_box = torch.tensor(
-                    perturbations[j - first_frame][:,curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]])
+                    perturbations[j - first_frame][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]])
                 noise_box = noise_box.to(device)
                 tgt_img[0][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]] += noise_box
                 tgt_img[0] = tgt_img[0].clamp(-1, 1)
@@ -146,7 +146,7 @@ def main():
 
     if args.output_dir is not None:
         np.save(output_dir / 'ground_truth.npy', ground_truth_array)
-        np.save(output_dir / 'predictions_perturbed.npy', predictions_array)
+        np.save(output_dir + result_name, predictions_array)
 
 
 def compute_pose_error(gt, pred):
@@ -170,4 +170,5 @@ def compute_pose_error(gt, pred):
 if __name__ == '__main__':
     first_frame = 691
     last_frame = 731
-    main()
+    main("noiseRight.npy", "predictions_perturbed_Right.npy")
+    main("noiseLeft.npy", "predictions_perturbed_Left.npy")
