@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser(description='Script for attacking sfm model',
 parser.add_argument("pretrained_weights", type=str, help="pretrained PoseNet weights path")
 parser.add_argument("--img-height", default=128, type=int, help="Image height")
 parser.add_argument("--img-width", default=416, type=int, help="Image width")
-#parser.add_argument("--output-file", "-o", default=None, help="Output numpy file")
+# parser.add_argument("--output-file", "-o", default=None, help="Output numpy file")
 parser.add_argument("--tracker-file", default=None, help="Object tracker numpy file")
 parser.add_argument("--dataset-dir", default='.', type=str, help="Dataset directory")
 
@@ -118,8 +118,8 @@ class Attacker():
         orig_results = torch.from_numpy(orig_results).double()
 
         # Train adversarial example
-        criterions = [torch.nn.MSELoss() for _ in range(first_frame, last_frame)]
-        for epoch in range(250):
+        criterions = [(torch.nn.MSELoss(), torch.nn.MSELoss()) for _ in range(first_frame, last_frame)]
+        for epoch in range(10):
             poses = []
             for k in tqdm(range(first_frame, last_frame + self.look_ahead)):
                 sample = self.framework.getByIndex(k)
@@ -132,9 +132,11 @@ class Attacker():
                     w = curr_mask[2] - curr_mask[0]
                     h = curr_mask[3] - curr_mask[1]
                     noise_box = noises[k - first_frame][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]]
+                    # z_clamped = noise_box.tanh()
                     z_clamped = noise_box.clamp(-2, 2)
                     z_clamped = z_clamped.to(device)
                     tgt_img[0, :, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]] += z_clamped
+                    # tgt_img[0, :, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]] = z_clamped
                     tgt_img = tgt_img.clamp(-1, 1)
 
                 # Add noises to reference frames
@@ -158,8 +160,10 @@ class Attacker():
                     w = curr_mask[2] - curr_mask[0]
                     h = curr_mask[3] - curr_mask[1]
                     noise_box = noises[k - first_frame][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]]
+                    # z_clamped = noise_box.tanh()
                     z_clamped = noise_box.clamp(-2, 2)
                     z_clamped = z_clamped.to(device)
+                    # ref[0, :, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]] = z_clamped
                     ref[0, :, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]] += z_clamped
                     ref = ref.clamp(-1, 1)
 
@@ -170,13 +174,15 @@ class Attacker():
             absolute_attacked_pose = getAbsolutePoses(poses)
 
             ##### Minimize the negative loss <-> maximize the loss
+            c = 10
             for i in range(first_frame, last_frame):
-                loss = criterions[i - first_frame](adv_poses[i - first_frame], poses[i - first_frame])
+                loss = c * criterions[i - first_frame][0](adv_poses[i - first_frame], poses[i - first_frame]) + \
+                       criterions[i - first_frame][1](noises[i - first_frame], torch.zeros_like(noises[i - first_frame])).to(device)
                 optimizers[i - first_frame].zero_grad()
                 loss.backward(retain_graph=True)
                 optimizers[i - first_frame].step()
 
-            loss = -1 * self.criterion(absolute_attacked_pose, orig_results)
+            loss = self.criterion(absolute_attacked_pose, orig_results)
             print("epoch {} loss: {}".format(epoch, loss.item()))
             print("\u0394x: {}, \u0394z: {}".format(absolute_attacked_pose[1, 0] - orig_results[1, 0],
                                                     absolute_attacked_pose[1, 2] - orig_results[1, 2]))
@@ -189,7 +195,7 @@ class Attacker():
 
 
 def main():
-    #output_file = Path(args.output_file)
+    # output_file = Path(args.output_file)
     tracker_file = Path(args.tracker_file)
     pretrained_weights = Path(args.pretrained_weights)
     dataset_dir = Path(args.dataset_dir)
