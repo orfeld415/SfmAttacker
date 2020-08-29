@@ -36,6 +36,30 @@ def resize2d(img, size):
     return F.adaptive_avg_pool2d(img, size)
 
 
+def getNetInput(sample):
+    """ Returns model input given a sample of images snippet """
+    args = parser.parse_args()
+    imgs = sample['imgs']
+    h, w, _ = imgs[0].shape
+    if h != args.img_height or w != args.img_width:
+        imgs = [imresize(img, (args.img_height, args.img_width)).astype(np.float32) for img in imgs]
+
+    imgs = [np.transpose(img, (2, 0, 1)) for img in imgs]
+    ref_imgs = []
+    for j, img in enumerate(imgs):
+        img = torch.from_numpy(img).unsqueeze(0)
+        img = ((img / 255 - 0.5) / 0.5).to(device)
+        if j == len(imgs) // 2:
+            tgt_img = img
+        else:
+            ref_imgs.append(img)
+
+    tgt_img = tgt_img.to(device)
+    ref_imgs = [img.to(device) for img in ref_imgs]
+
+    return tgt_img, ref_imgs
+
+
 @torch.no_grad()
 def main(perturbation, result_name):
     args = parser.parse_args()
@@ -66,23 +90,8 @@ def main(perturbation, result_name):
         ground_truth_array = np.zeros((len(framework), seq_length, 3, 4))
 
     for j, sample in enumerate(tqdm(framework)):
+        tgt_img, ref_imgs = getNetInput(sample)
         imgs = sample['imgs']
-
-        h, w, _ = imgs[0].shape
-        if (not args.no_resize) and (h != args.img_height or w != args.img_width):
-            imgs = [imresize(img, (args.img_height, args.img_width)).astype(np.float32) for img in imgs]
-
-        imgs = [np.transpose(img, (2, 0, 1)) for img in imgs]
-
-        ref_imgs = []
-        for i, img in enumerate(imgs):
-            img = torch.from_numpy(img).unsqueeze(0)
-            img = ((img / 255 - 0.5) / 0.5).to(device)
-            if i == len(imgs) // 2:
-                tgt_img = img
-            else:
-                ref_imgs.append(img)
-
         if attack:
             # Add noise to target image
             if j + 2 >= first_frame and j + 2 < last_frame:
@@ -92,7 +101,11 @@ def main(perturbation, result_name):
                 noise_box = torch.tensor(
                     perturbations[j - first_frame][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]])
                 noise_box = noise_box.to(device)
-                tgt_img[0][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]] += noise_box
+                z_clamped = noise_box.clamp(-2, 2)
+                z_clamped = z_clamped.to(device)
+                #z_claped = noise_box.tanh()
+                #tgt_img[0][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]] = z_claped
+                tgt_img[0][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]] += z_clamped
                 tgt_img[0] = tgt_img[0].clamp(-1, 1)
 
             # Add noise to reference images
@@ -111,8 +124,10 @@ def main(perturbation, result_name):
                     noise_box = torch.tensor(
                         perturbations[j - first_frame][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]])
                     noise_box = noise_box.to(device)
-                    ref_imgs[ref_idx][0][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]] += noise_box
-                    ref_imgs[ref_idx] = ref_imgs[ref_idx].clamp(-1, 1)
+                    # ref_imgs[ref_idx][0][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]] += noise_box
+                    z_claped = noise_box.tanh()
+                    ref_imgs[ref_idx][0][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]] = z_claped
+                    # ref_imgs[ref_idx] = ref_imgs[ref_idx].clamp(-1, 1)
 
         _, poses = pose_net(tgt_img, ref_imgs)
         poses = poses.cpu()[0]

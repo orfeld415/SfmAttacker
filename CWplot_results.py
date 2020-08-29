@@ -47,8 +47,8 @@ def getAbsoluteScale(poses, gt):
 def animate(i):
     image = mpimg.imread(dataset_dir / '{}'.format(imgs[i]))
     image = imresize(image, (args.img_height, args.img_width)).astype(np.float32)
-    # image = image / 255
-    image = (image - 128) / 128
+    image = image / 255
+    image = (image * 2) - 1
     if i >= first_frame and i < last_frame:
         # Add the adversarial noise to image
         curr_mask = noise_mask[i - first_frame].astype(np.int)
@@ -58,8 +58,9 @@ def animate(i):
             perturbations[i - first_frame][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]])
         pert = np.transpose(noise_box, (1, 2, 0))  # .numpy()
         z_clamped = pert.clamp(-2, 2)
-        # print(image[curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]].shape)
+        # z_clamped = pert.tanh()
         image[curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]] += z_clamped.numpy()  # pert / 2 + 1
+        # image[curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]] = z_clamped.numpy()
         image = np.clip(image, -1, 1)
     image = (image + 1) / 2
 

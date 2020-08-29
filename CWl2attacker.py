@@ -9,6 +9,9 @@ from scipy.misc import imresize
 from inverse_warp import pose_vec2mat
 import argparse
 
+import matplotlib.pyplot as plt
+from scipy.misc import imresize
+
 parser = argparse.ArgumentParser(description='Script for attacking sfm model',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("pretrained_weights", type=str, help="pretrained PoseNet weights path")
@@ -86,15 +89,17 @@ class Attacker():
         # Initialize random noise from uniform distribution between (-1, 1)
         noises = [(torch.rand((3, args.img_height, args.img_width)) * 2 - 1) * 1 for _ in
                   range(first_frame, last_frame)]
+        # noises = [(torch.rand((3, args.img_height, args.img_width)) * 4 - 2) * 1 for _ in
+        #          range(first_frame, last_frame)]
         print(noises[0].shape)
         for noise in noises:
             noise.requires_grad_(True)
 
         # Initialize optimizer
-        optimizers = []
-        for noise in noises:
-            optimizers.append(torch.optim.Adam([noise], lr=1e-1))
-
+        # optimizers = []
+        # for noise in noises:
+        #    optimizers.append(torch.optim.Adam([noise], lr=1e-1))
+        optimizer = torch.optim.Adam(noises, lr=1e-1)
         # Get model adverserial "class" results (without attack)
         poses = []
 
@@ -119,27 +124,34 @@ class Attacker():
 
         # Train adversarial example
         criterions = [(torch.nn.MSELoss(), torch.nn.MSELoss()) for _ in range(first_frame, last_frame)]
-        for epoch in range(10):
+        for epoch in range(50):
             poses = []
+            # noised_images = []
+            # original_images = []
             for k in tqdm(range(first_frame, last_frame + self.look_ahead)):
                 sample = self.framework.getByIndex(k)
                 i = k - first_frame
                 tgt_img, ref_imgs = getNetInput(sample)
-
-                # Add noise to target frame
                 if k + 2 < last_frame:
+                    # original_images.append(tgt_img[0].clone())
                     curr_mask = noise_mask[i + 2].astype(np.int)
                     w = curr_mask[2] - curr_mask[0]
                     h = curr_mask[3] - curr_mask[1]
-                    noise_box = noises[k - first_frame][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]]
+                    noise_box = noises[k - first_frame + 2][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]]
                     # z_clamped = noise_box.tanh()
                     z_clamped = noise_box.clamp(-2, 2)
                     z_clamped = z_clamped.to(device)
                     tgt_img[0, :, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]] += z_clamped
                     # tgt_img[0, :, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]] = z_clamped
-                    tgt_img = tgt_img.clamp(-1, 1)
-
+                    # noised_images.append(tgt_img[0])
+                    # tgt_img = tgt_img.clamp(-1, 1)
                 # Add noises to reference frames
+                #if k == first_frame:
+                #    original_images = [ref_imgs[1][0]] + original_images
+                #    original_images = [ref_imgs[0][0]] + original_images
+                #if k + 3 == last_frame:
+                #    original_images = original_images + [ref_imgs[2][0]]
+                #    original_images = original_images + [ref_imgs[3][0]]
                 for j, ref in enumerate(ref_imgs):
                     if j == 0 and k >= last_frame:
                         continue
@@ -159,13 +171,20 @@ class Attacker():
                         curr_mask = noise_mask[i + 4].astype(np.int)
                     w = curr_mask[2] - curr_mask[0]
                     h = curr_mask[3] - curr_mask[1]
-                    noise_box = noises[k - first_frame][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]]
+                    idx = j
+                    if j >= 2:
+                        idx += 1
+                    noise_box = noises[k - first_frame + idx][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]]
                     # z_clamped = noise_box.tanh()
                     z_clamped = noise_box.clamp(-2, 2)
                     z_clamped = z_clamped.to(device)
                     # ref[0, :, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]] = z_clamped
+                    # if k == first_frame and (j == 0 or j == 1):
+                    #    noised_images = noised_images + [ref_imgs[j][0]]
+                    # if k+3 == last_frame and (j == 2 or j == 3):
+                    #    noised_images = noised_images + [ref_imgs[j][0]]
                     ref[0, :, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]] += z_clamped
-                    ref = ref.clamp(-1, 1)
+                    ref_imgs[j] = ref.clamp(-1, 1)
 
                 _, pose = self.pose_net(tgt_img, ref_imgs)
                 poses.append(pose)
@@ -174,13 +193,23 @@ class Attacker():
             absolute_attacked_pose = getAbsolutePoses(poses)
 
             ##### Minimize the negative loss <-> maximize the loss
-            c = 10
+            c = 5
+            loss = 0
             for i in range(first_frame, last_frame):
-                loss = c * criterions[i - first_frame][0](adv_poses[i - first_frame], poses[i - first_frame]) + \
-                       criterions[i - first_frame][1](noises[i - first_frame], torch.zeros_like(noises[i - first_frame])).to(device)
-                optimizers[i - first_frame].zero_grad()
-                loss.backward(retain_graph=True)
-                optimizers[i - first_frame].step()
+                curr_mask = noise_mask[i - first_frame].astype(np.int)
+                loss += c * criterions[i - first_frame][0](adv_poses[i - first_frame], poses[i - first_frame]) + \
+                        criterions[i - first_frame][1](noises[i - first_frame],
+                                                       torch.zeros_like(noises[i - first_frame])).to(device)
+                # noise_box = noises[i - first_frame][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]].to(
+                # device) sample = self.framework.getByIndex(i) tgt_img, ref_imgs = getNetInput(sample) tgt_img =
+                # tgt_img[0][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]].to(device) loss += c *
+                # criterions[i - first_frame][0](adv_poses[i - first_frame], poses[i - first_frame]) + \ criterions[i
+                #  - first_frame][1](noised_images[i - first_frame], original_images[i - first_frame]).to(device)
+                # optimizers[i - first_frame].zero_grad() loss.backward(retain_graph=True) optimizers[i -
+                # first_frame].step()
+            optimizer.zero_grad()
+            loss.backward(retain_graph=True)
+            optimizer.step()
 
             loss = self.criterion(absolute_attacked_pose, orig_results)
             print("epoch {} loss: {}".format(epoch, loss.item()))
