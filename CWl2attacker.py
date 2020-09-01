@@ -43,7 +43,6 @@ def getAbsolutePoses(poses):
         r = poses[i - 1][1]
         poses[i] = r[:, :3] @ poses[i]
         poses[i][:, :, -1] = poses[i][:, :, -1] + r[:, -1]
-
     return poses[-1][:, :, -1]
 
 
@@ -82,7 +81,7 @@ class Attacker():
         self.criterion = torch.nn.MSELoss()
         self.adv_framework = adv_framework
 
-    def generate(self, noise_mask, first_frame, last_frame, first_adv_frame):
+    def generate(self, noise_mask, first_frame, last_frame, first_adv_frame, best=None):
         """ Generates an adversarial example """
         num_frames = last_frame - first_frame + 1
 
@@ -91,7 +90,14 @@ class Attacker():
                   range(first_frame, last_frame)]
         # noises = [(torch.rand((3, args.img_height, args.img_width)) * 4 - 2) * 1 for _ in
         #          range(first_frame, last_frame)]
-        print(noises[0].shape)
+        # print(noises[0].shape)
+
+        if best is not None:
+            best = torch.tensor(best)
+            rs = [noise.norm().item() for noise in best]
+            nrs = [(torch.rand(1).item() * r) for r in rs]
+            noises = [(noise / noise.norm().item()) * nrs[i] for i, noise in enumerate(noises)]
+
         for noise in noises:
             noise.requires_grad_(True)
 
@@ -109,6 +115,7 @@ class Attacker():
             _, pose = self.pose_net(tgt_img, ref_imgs)
             poses.append(pose)
         adv_poses = poses
+        # adv_points = [getAbsolutePoses([p]).to(device) for p in poses]
         # orig_results = getAbsolutePoses(poses).detach().numpy()
         # orig_results = torch.from_numpy(orig_results).double()
 
@@ -146,10 +153,10 @@ class Attacker():
                     # noised_images.append(tgt_img[0])
                     # tgt_img = tgt_img.clamp(-1, 1)
                 # Add noises to reference frames
-                #if k == first_frame:
+                # if k == first_frame:
                 #    original_images = [ref_imgs[1][0]] + original_images
                 #    original_images = [ref_imgs[0][0]] + original_images
-                #if k + 3 == last_frame:
+                # if k + 3 == last_frame:
                 #    original_images = original_images + [ref_imgs[2][0]]
                 #    original_images = original_images + [ref_imgs[3][0]]
                 for j, ref in enumerate(ref_imgs):
@@ -193,8 +200,10 @@ class Attacker():
             absolute_attacked_pose = getAbsolutePoses(poses)
 
             ##### Minimize the negative loss <-> maximize the loss
-            c = 5
+            c = 2
             loss = 0
+
+            # noised_points = [getAbsolutePoses([p]).to(device) for p in poses]
             for i in range(first_frame, last_frame):
                 curr_mask = noise_mask[i - first_frame].astype(np.int)
                 loss += c * criterions[i - first_frame][0](adv_poses[i - first_frame], poses[i - first_frame]) + \
@@ -207,6 +216,7 @@ class Attacker():
                 #  - first_frame][1](noised_images[i - first_frame], original_images[i - first_frame]).to(device)
                 # optimizers[i - first_frame].zero_grad() loss.backward(retain_graph=True) optimizers[i -
                 # first_frame].step()
+            total_loss = loss
             optimizer.zero_grad()
             loss.backward(retain_graph=True)
             optimizer.step()
@@ -220,7 +230,7 @@ class Attacker():
         noises = [noise.clamp(-1, 1) for noise in noises]
         noises = [noise.detach().numpy() for noise in noises]
         print(noises[0].shape)
-        return np.stack(noises, axis=0)
+        return total_loss.item(), np.stack(noises, axis=0)
 
 
 def main():
@@ -242,8 +252,18 @@ def main():
 
     attacker = Attacker(framework, pose_net, adv_framework)
     noise_mask = np.load(tracker_file)
-    pertubationLeft = attacker.generate(noise_mask, 691, 731, 187)
-    pertubationRight = attacker.generate(noise_mask, 691, 731, 90)
+    loss, pertubationLeft = attacker.generate(noise_mask, 691, 731, 187)
+    for _ in range(4):
+        tmploss, tmppertubationLeft = attacker.generate(noise_mask, 691, 731, 187, pertubationLeft)
+        if tmploss < loss:
+            loss = tmploss
+            pertubationLeft = tmppertubationLeft
+    tmp_loss, pertubationRight = attacker.generate(noise_mask, 691, 731, 90)
+    for _ in range(4):
+        tmploss, tmppertubationRight = attacker.generate(noise_mask, 691, 731, 187, pertubationRight)
+        if tmploss < loss:
+            loss = tmploss
+            pertubationRight = tmppertubationRight
     np.save("noiseLeft.npy", pertubationLeft)
     np.save("noiseRight.npy", pertubationRight)
 
