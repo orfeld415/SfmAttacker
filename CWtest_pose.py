@@ -31,11 +31,6 @@ parser.add_argument("--tracker-file", default=None, help="Object tracker numpy f
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 
-def resize2d(img, size):
-    img = torch.tensor(img)
-    return F.adaptive_avg_pool2d(img, size)
-
-
 def getNetInput(sample):
     """ Returns model input given a sample of images snippet """
     args = parser.parse_args()
@@ -124,10 +119,10 @@ def main(perturbation, result_name):
                     noise_box = torch.tensor(
                         perturbations[j - first_frame][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]])
                     noise_box = noise_box.to(device)
-                    # ref_imgs[ref_idx][0][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]] += noise_box
-                    z_claped = noise_box.tanh()
-                    ref_imgs[ref_idx][0][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]] = z_claped
-                    # ref_imgs[ref_idx] = ref_imgs[ref_idx].clamp(-1, 1)
+                    ref_imgs[ref_idx][0][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]] += noise_box
+                    #z_claped = noise_box.tanh()
+                    #ref_imgs[ref_idx][0][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]] = z_claped
+                    ref_imgs[ref_idx] = ref_imgs[ref_idx].clamp(-1, 1)
 
         _, poses = pose_net(tgt_img, ref_imgs)
         poses = poses.cpu()[0]

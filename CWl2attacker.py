@@ -83,11 +83,15 @@ class Attacker():
 
     def generate(self, noise_mask, first_frame, last_frame, first_adv_frame, best=None):
         """ Generates an adversarial example """
-        num_frames = last_frame - first_frame + 1
 
         # Initialize random noise from uniform distribution between (-1, 1)
-        noises = [(torch.rand((3, args.img_height, args.img_width)) * 2 - 1) * 1 for _ in
-                  range(first_frame, last_frame)]
+        noises = []
+        for i in range(first_frame, last_frame):
+            curr_mask = noise_mask[i - first_frame].astype(np.int)
+            w = curr_mask[2] - curr_mask[0]
+            h = curr_mask[3] - curr_mask[1]
+            noises += [(torch.rand((3, h, w)) * 2 - 1) * 1]
+
         # noises = [(torch.rand((3, args.img_height, args.img_width)) * 4 - 2) * 1 for _ in
         #          range(first_frame, last_frame)]
         # print(noises[0].shape)
@@ -144,7 +148,7 @@ class Attacker():
                     curr_mask = noise_mask[i + 2].astype(np.int)
                     w = curr_mask[2] - curr_mask[0]
                     h = curr_mask[3] - curr_mask[1]
-                    noise_box = noises[k - first_frame + 2][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]]
+                    noise_box = noises[k - first_frame + 2]  # [:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]]
                     # z_clamped = noise_box.tanh()
                     z_clamped = noise_box.clamp(-2, 2)
                     z_clamped = z_clamped.to(device)
@@ -181,7 +185,8 @@ class Attacker():
                     idx = j
                     if j >= 2:
                         idx += 1
-                    noise_box = noises[k - first_frame + idx][:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]]
+                    noise_box = noises[
+                        k - first_frame + idx]  # [:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]]
                     # z_clamped = noise_box.tanh()
                     z_clamped = noise_box.clamp(-2, 2)
                     z_clamped = z_clamped.to(device)
@@ -200,7 +205,7 @@ class Attacker():
             absolute_attacked_pose = getAbsolutePoses(poses)
 
             ##### Minimize the negative loss <-> maximize the loss
-            c = 2
+            c = 150
             loss = 0
 
             # noised_points = [getAbsolutePoses([p]).to(device) for p in poses]
@@ -230,6 +235,11 @@ class Attacker():
         noises = [noise.clamp(-1, 1) for noise in noises]
         noises = [noise.detach().numpy() for noise in noises]
         print(noises[0].shape)
+        for i, noise in enumerate(noises):
+            z = np.zeros((3, args.img_height, args.img_width))
+            curr_mask = noise_mask[i].astype(np.int)
+            z[:, curr_mask[1]:curr_mask[3], curr_mask[0]:curr_mask[2]] = noise
+            noises[i] = z
         return total_loss.item(), np.stack(noises, axis=0)
 
 
@@ -258,9 +268,9 @@ def main():
         if tmploss < loss:
             loss = tmploss
             pertubationLeft = tmppertubationLeft
-    tmp_loss, pertubationRight = attacker.generate(noise_mask, 691, 731, 90)
+    tmploss, pertubationRight = attacker.generate(noise_mask, 691, 731, 90)
     for _ in range(4):
-        tmploss, tmppertubationRight = attacker.generate(noise_mask, 691, 731, 187, pertubationRight)
+        tmploss, tmppertubationRight = attacker.generate(noise_mask, 691, 731, 90, pertubationRight)
         if tmploss < loss:
             loss = tmploss
             pertubationRight = tmppertubationRight
