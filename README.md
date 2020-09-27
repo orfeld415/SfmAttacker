@@ -44,18 +44,8 @@ The attacker first initiallizes a random noise image to add for each attacked fr
 An example use:
 
 ```
-python attacker.py models/exp_pose_model_best.pth.tar --tracker-file tracked_obj.npy --dataset-dir [PATH_TO_DATASET]/ -o noise.npy
+python CWl2attacker.py models/exp_pose_model_best.pth.tar --tracker-file L_tracked_obj.npy --dataset-dir [PATH_TO_DATASET]
 ```
-
-### Get model's result
-
-After retrieving a noise image from attacker.py we can get the model's results on the adversarial video with the following command
-
-```
-python test_pose.py models/exp_pose_model_best.pth.tar --dataset-dir [PATH_TO_DATASET] --sequences 09 --output-dir results/ --tracker-file tracked_obj.npy --perturbation noise.npy
-```
-
-You can also get the original results by removing the flags --tracker-file and --perturbation
 
 ### Plot results
 
@@ -63,18 +53,50 @@ To visualize the results we use plot_results.py, which can plot the trajectory a
 To plot:
 
 ```
-python plot_results.py --dataset-dir [PATH_TO_DATASET]/sequences/09/image_2/ --tracker-file tracked_obj.npy --perturbation noise.npy --ground-truth-results results/ground_truth.npy --perturbed-results results/predictions_perturbed.npy --model-results results/predictions.npy
+python CWplot_results.py --dataset-dir [PATH_TO_DATASET]\sequences\09\image_2\ --tracker-file L_tracked_obj.npy --perturbation noiseRight.npy --ground-truth-results resultsL/ground_truth.npy --perturbed-results results/predictions_perturbed_Right.npy --model-results results/predictions_perturbed.npy
 ```
 
 To also show the adversarial video add an --animte flag:
 
 ```
-python plot_results.py --dataset-dir [PATH_TO_DATASET]/sequences/09/image_2/ --tracker-file tracked_obj.npy --perturbation noise.npy --ground-truth-results results/ground_truth.npy --perturbed-results results/predictions_perturbed.npy --model-results results/predictions.npy --animate
+python CWplot_results.py --dataset-dir [PATH_TO_DATASET]\sequences\09\image_2\ --tracker-file L_tracked_obj.npy --perturbation noiseRight.npy --ground-truth-results resultsL/ground_truth.npy --perturbed-results results/predictions_perturbed_Right.npy --model-results results/predictions_perturbed.npy --animte
 ```
 
-### Reproduce our results
+### Reproduce the results
 
 All hyperparameters are already set within the files.
-Our results were produced on KITTI's visual odometry sequence 09.
+The value of c is set to 360. You can change it to reproduce all the experiments.
+The results were produced on KITTI's visual odometry sequence 09.
 
-To reproduce the results attack the model (see Attacker) with the tracked object file in results/tracked_obj.npy
+To reproduce the results run the following commands: 
+
+1. To attack with the original attacker run:
+
+```
+python attacker2.py models/exp_pose_model_best.pth.tar --tracker-file L_tracked_obj.npy --dataset-dir [PATH_TO_DATASET]  -o attackernoise.npy
+```
+
+2. To plot the original attacker results run:
+
+```
+python plot_results.py --dataset-dir [PATH_TO_DATASET]/sequences/09/image_2/ --tracker-file tracked_obj.npy --perturbation attackernoise.npy --ground-truth-results results/ground_truth.npy --perturbed-results results/predictions_perturbed_attacker.npy --model-results results/predictions_perturbed.npy --animate
+```
+
+3.To run the new attack (with both right and left turns) run:
+
+```
+python CWl2attacker.py models/exp_pose_model_best.pth.tar --tracker-file L_tracked_obj.npy --dataset-dir [PATH_TO_DATASET]/dataset/
+```
+
+4.To plot the new attack results run (left attack): 
+
+```
+python CWplot_results.py --dataset-dir [PATH_TO_DATASET]\sequences\09\image_2\ --tracker-file L_tracked_obj.npy --perturbation noiseLeft.npy --ground-truth-results results/ground_truth.npy --perturbed-results results/predictions_perturbed_Left.npy --model-results results/predictions_perturbed.npy --animate
+```
+
+5.To plot the new attack results run (right attack): 
+
+```
+python CWplot_results.py --dataset-dir [PATH_TO_DATASET]\sequences\09\image_2\ --tracker-file L_tracked_obj.npy --perturbation noiseRight.npy --ground-truth-results results/ground_truth.npy --perturbed-results results/predictions_perturbed_Right.npy --model-results results/predictions_perturbed.npy --animate
+```
+

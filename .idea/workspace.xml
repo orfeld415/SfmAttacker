@@ -4,13 +4,26 @@
     <list default="true" id="03c4ee32-adf9-40e2-aa9d-a3622ebde7b1" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CWl2attacker.py" beforeDir="false" afterPath="$PROJECT_DIR$/CWl2attacker.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CWtest_pose.py" beforeDir="false" afterPath="$PROJECT_DIR$/CWtest_pose.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/animation.gif" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/noise.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/noiseLeft.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/noiseRight.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/resultsL/predictions_perturbed_Left.npy" beforeDir="false" afterPath="$PROJECT_DIR$/resultsL/predictions_perturbed_Left.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/resultsL/predictions_perturbed_Right.npy" beforeDir="false" afterPath="$PROJECT_DIR$/resultsL/predictions_perturbed_Right.npy" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CWtest_pose.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/M_tracked_obj.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/attacker_noise.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/c_values.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/orig_results/ground_truth.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/orig_results/predictions_perturbed.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/python" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/predictions_perturbed_Left.npy" beforeDir="false" afterPath="$PROJECT_DIR$/results/predictions_perturbed_Left.npy" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/predictions_perturbed_Right.npy" beforeDir="false" afterPath="$PROJECT_DIR$/results/predictions_perturbed_Right.npy" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/results2/ground_truth.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/results2/model_predictions.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/results2/predictions_perturbed.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/results2/predictions_perturbed_Left.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/results2/predictions_perturbed_Right.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/resultsL/ground_truth.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/resultsL/predictions_perturbed.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/resultsL/predictions_perturbed_Left.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/resultsL/predictions_perturbed_Right.npy" beforeDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -22,39 +35,42 @@
     <session id="1644021815">
       <usages-collector id="statistics.lifecycle.project">
         <counts>
+          <entry key="project.closed" value="1" />
+          <entry key="project.open.time.3" value="1" />
+          <entry key="project.open.time.4" value="1" />
           <entry key="project.open.time.9" value="1" />
-          <entry key="project.opened" value="1" />
+          <entry key="project.opened" value="3" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.open">
         <counts>
-          <entry key="py" value="7" />
+          <entry key="py" value="24" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.open">
         <counts>
-          <entry key="Python" value="7" />
+          <entry key="Python" value="24" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
-          <entry key="py" value="3801" />
+          <entry key="py" value="5358" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
         <counts>
-          <entry key="Python" value="3801" />
+          <entry key="Python" value="5358" />
         </counts>
       </usages-collector>
     </session>
   </component>
   <component name="FileEditorManager">
-    <leaf>
+    <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/attacker.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="27">
-              <caret line="152" column="54" selection-start-line="152" selection-start-column="42" selection-end-line="152" selection-end-column="54" />
+            <state relative-caret-position="378">
+              <caret line="128" column="32" selection-start-line="128" selection-start-column="32" selection-end-line="128" selection-end-column="32" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
               </folding>
@@ -62,20 +78,11 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/CWplot_results.py">
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/attacker2.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-448">
-              <caret line="57" column="25" selection-start-line="57" selection-start-column="12" selection-end-line="57" selection-end-column="25" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/plot_results.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="352">
-              <caret line="81" column="43" selection-start-line="81" selection-start-column="43" selection-end-line="81" selection-end-column="43" />
+            <state relative-caret-position="-17">
+              <caret line="212" column="55" selection-start-line="212" selection-start-column="55" selection-end-line="212" selection-end-column="55" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
               </folding>
@@ -86,31 +93,10 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/CWl2attacker.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="5236">
-              <caret line="207" column="19" selection-start-line="207" selection-start-column="19" selection-end-line="207" selection-end-column="19" />
+            <state relative-caret-position="33">
+              <caret line="164" column="19" selection-start-line="164" selection-start-column="19" selection-end-line="164" selection-end-column="19" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/CWtest_pose.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1889">
-              <caret line="125" selection-start-line="125" selection-end-line="125" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/test_pose.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="557">
-              <caret line="27" column="35" selection-start-line="27" selection-start-column="21" selection-end-line="27" selection-end-column="35" />
-              <folding>
-                <element signature="e#0#12#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -120,13 +106,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>orig_results</find>
-      <find>tqdm</find>
-      <find>print</find>
-      <find>ref</find>
-      <find>h</find>
-      <find>getAbsolutePoses</find>
-      <find>noise_mask</find>
       <find>noises</find>
       <find>h,</find>
       <find>h, w</find>
@@ -137,16 +116,26 @@
       <find>7</find>
       <find>70</find>
       <find>save</find>
-      <find>ground_truth_array</find>
       <find>pertubation</find>
       <find>original_im</find>
       <find>absolute_attacked_pose</find>
-      <find>adv_poses</find>
       <find>imresize</find>
       <find>perturbed</find>
       <find>perturbations</find>
       <find>perturbation</find>
+      <find>ground_truth_array</find>
       <find>cr</find>
+      <find>errors</find>
+      <find>compute_pose_error</find>
+      <find>snippet_length</find>
+      <find>noised_images</find>
+      <find>self.criterion</find>
+      <find>orig_results</find>
+      <find>predictions</find>
+      <find>seq_len</find>
+      <find>adv_poses</find>
+      <find>imgs</find>
+      <find>print</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -155,17 +144,21 @@
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
-        <option value="$PROJECT_DIR$/attacker.py" />
         <option value="$PROJECT_DIR$/test_pose.py" />
         <option value="$PROJECT_DIR$/CWplot_results.py" />
-        <option value="$PROJECT_DIR$/CWl2attacker.py" />
+        <option value="$PROJECT_DIR$/‏‏CWl2attackerTan.py" />
+        <option value="$PROJECT_DIR$/‏‏CWplot_resultsTan.py" />
+        <option value="$PROJECT_DIR$/‏‏CWtest_poseTan.py" />
         <option value="$PROJECT_DIR$/CWtest_pose.py" />
+        <option value="$PROJECT_DIR$/attacker.py" />
+        <option value="$PROJECT_DIR$/attacker2.py" />
+        <option value="$PROJECT_DIR$/CWl2attacker.py" />
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="493" />
-    <option name="y" value="-9" />
+  <component name="ProjectFrameBounds" extendedState="7">
+    <option name="x" value="-8" />
+    <option name="y" value="-8" />
     <option name="width" value="988" />
     <option name="height" value="867" />
   </component>
@@ -223,11 +216,11 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
+    <frame x="-8" y="-8" width="1936" height="1056" extended-state="7" />
     <editor active="true" />
     <layout>
       <window_info id="Favorites" order="0" side_tool="true" />
-      <window_info content_ui="combo" id="Project" order="1" visible="true" weight="0.24973656" />
+      <window_info active="true" content_ui="combo" id="Project" order="1" visible="true" weight="0.12486828" />
       <window_info id="Structure" order="2" side_tool="true" weight="0.25" />
       <window_info anchor="bottom" id="Terminal" order="0" />
       <window_info anchor="bottom" id="Event Log" order="1" side_tool="true" />
@@ -249,56 +242,66 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/CWplot_results.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-448">
-          <caret line="57" column="25" selection-start-line="57" selection-start-column="12" selection-end-line="57" selection-end-column="25" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/plot_results.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="352">
           <caret line="81" column="43" selection-start-line="81" selection-start-column="43" selection-end-line="81" selection-end-column="43" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/‏‏CWl2attackerTan.py" />
+    <entry file="file://$PROJECT_DIR$/‏‏CWplot_resultsTan.py" />
+    <entry file="file://$PROJECT_DIR$/‏‏CWtest_poseTan.py" />
+    <entry file="file://$PROJECT_DIR$/CWplot_results.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="243">
+          <caret line="57" column="25" selection-start-line="57" selection-start-column="12" selection-end-line="57" selection-end-column="25" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/test_pose.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-297">
+          <caret line="101" column="25" selection-start-line="101" selection-start-column="25" selection-end-line="101" selection-end-column="25" />
           <folding>
-            <element signature="e#0#18#0" expanded="true" />
+            <element signature="e#0#12#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/CWtest_pose.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1889">
-          <caret line="125" selection-start-line="125" selection-end-line="125" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/CWl2attacker.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="5236">
-          <caret line="207" column="19" selection-start-line="207" selection-start-column="19" selection-end-line="207" selection-end-column="19" />
-          <folding>
-            <element signature="e#0#18#0" expanded="true" />
-          </folding>
+        <state relative-caret-position="464">
+          <caret line="117" column="110" selection-start-line="117" selection-start-column="110" selection-end-line="117" selection-end-column="167" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/attacker.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="27">
-          <caret line="152" column="54" selection-start-line="152" selection-start-column="42" selection-end-line="152" selection-end-column="54" />
+        <state relative-caret-position="378">
+          <caret line="128" column="32" selection-start-line="128" selection-start-column="32" selection-end-line="128" selection-end-column="32" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/test_pose.py">
+    <entry file="file://$PROJECT_DIR$/CWl2attacker.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="557">
-          <caret line="27" column="35" selection-start-line="27" selection-start-column="21" selection-end-line="27" selection-end-column="35" />
+        <state relative-caret-position="33">
+          <caret line="164" column="19" selection-start-line="164" selection-start-column="19" selection-end-line="164" selection-end-column="19" />
           <folding>
-            <element signature="e#0#12#0" expanded="true" />
+            <element signature="e#0#18#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/attacker2.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-17">
+          <caret line="212" column="55" selection-start-line="212" selection-start-column="55" selection-end-line="212" selection-end-column="55" />
+          <folding>
+            <element signature="e#0#18#0" expanded="true" />
           </folding>
         </state>
       </provider>
